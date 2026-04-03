@@ -132,6 +132,22 @@ export type MonazosEarningsSummary = {
   monazosDraws: Array<{ drawId: string; drawName: string; drawTime: string; gameId: string; gameName: string; ticketCount: number; totalAmount: number; commissionAmount: number }>;
 };
 
+
+export type SellerBalanceSummaryItem = {
+  sellerEmail: string;
+  openingBalance: number;
+  adminToSeller: number;
+  sellerToAdmin: number;
+  manualAdjustmentIn: number;
+  manualAdjustmentOut: number;
+  lotteryCashSales: number;
+  monazosCashSales: number;
+  totalCashSales: number;
+  lotteryPrizePayments: number;
+  monazosPrizePayments: number;
+  totalPrizePayments: number;
+  operationalBalance: number;
+};
 type ApiEnvelope<T> = { data: T; message?: string | string[] };
 
 let currentDeviceId = '';
@@ -374,6 +390,16 @@ export async function fetchMyMonazosEarnings(token: string, filters?: { date?: s
   if (filters?.toDate) query.set('toDate', filters.toDate);
   const suffix = query.toString() ? '?' + query.toString() : '';
   return await readEnvelopeWithAuth<MonazosEarningsSummary>('/monazos/my-earnings' + suffix, token);
+}
+
+export async function fetchMySellerBalanceSummary(token: string, filters?: { date?: string; fromDate?: string; toDate?: string; sellerEmail?: string }) {
+  const query = new URLSearchParams();
+  if (filters?.date) query.set('date', filters.date);
+  if (filters?.fromDate) query.set('fromDate', filters.fromDate);
+  if (filters?.toDate) query.set('toDate', filters.toDate);
+  if (filters?.sellerEmail) query.set('sellerEmail', filters.sellerEmail);
+  const suffix = query.toString() ? '?' + query.toString() : '';
+  return await readEnvelopeWithAuth<SellerBalanceSummaryItem[]>('/seller-balance/summary' + suffix, token);
 }
 
 export async function createLotteryTicketMobile(payload: {

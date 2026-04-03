@@ -2,7 +2,7 @@ import * as React from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchLotteries, fetchMonazosGames, fetchMyLotterySales, fetchMyMonazosSales, type Lottery, type MonazosGame, type SellerSale } from '../services/api';
+import { fetchLotteries, fetchMonazosGames, fetchMyLotterySales, fetchMyMonazosSales, fetchMySellerBalanceSummary, type Lottery, type MonazosGame, type SellerBalanceSummaryItem, type SellerSale } from '../services/api';
 import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
 import { useAppSession } from '../contexts/app-session';
@@ -41,6 +41,7 @@ export default function HomeScreen() {
   const [lotteries, setLotteries] = React.useState<Lottery[]>([]);
   const [monazosGames, setMonazosGames] = React.useState<MonazosGame[]>([]);
   const [remoteSales, setRemoteSales] = React.useState<SellerSale[]>([]);
+  const [sellerBalance, setSellerBalance] = React.useState<SellerBalanceSummaryItem | null>(null);
   const [tenantDraft, setTenantDraft] = React.useState(tenantSlug);
   const [email, setEmail] = React.useState(authUser?.email || '');
   const [password, setPassword] = React.useState('');
@@ -61,18 +62,24 @@ export default function HomeScreen() {
         setError('');
         const requests: Promise<any>[] = [fetchLotteries(tenantSlug), fetchMonazosGames(tenantSlug)];
         if (authUser?.email && accessToken) {
-          requests.push(fetchMyLotterySales(accessToken), fetchMyMonazosSales(accessToken));
+          requests.push(
+            fetchMyLotterySales(accessToken),
+            fetchMyMonazosSales(accessToken),
+            fetchMySellerBalanceSummary(accessToken, { date: new Date().toISOString().slice(0, 10), sellerEmail: authUser.email }),
+          );
         }
-        const [lotteriesData, monazosData, myLotterySales = [], myMonazosSales = []] = await Promise.all(requests);
+        const [lotteriesData, monazosData, myLotterySales = [], myMonazosSales = [], sellerBalanceSummary = []] = await Promise.all(requests);
         if (cancelled) return;
         setLotteries(lotteriesData);
         setMonazosGames(monazosData);
         setRemoteSales([...(myLotterySales as SellerSale[]), ...(myMonazosSales as SellerSale[])]);
+        setSellerBalance((sellerBalanceSummary as SellerBalanceSummaryItem[])[0] || null);
       } catch (err) {
         if (cancelled) return;
         setLotteries([]);
         setMonazosGames([]);
         setRemoteSales([]);
+        setSellerBalance(null);
         setError(err instanceof Error ? err.message : 'No se pudo cargar la app.');
       } finally {
         if (!cancelled) setLoading(false);
@@ -144,8 +151,25 @@ export default function HomeScreen() {
     await logout();
     setPassword('');
     setRemoteSales([]);
+    setSellerBalance(null);
     Alert.alert('Sesion cerrada', 'La app quedo sin vendedor autenticado.');
   }
+
+  const todaySellerBalance = sellerBalance || {
+    sellerEmail: authUser?.email || '',
+    openingBalance: 0,
+    adminToSeller: 0,
+    sellerToAdmin: 0,
+    manualAdjustmentIn: 0,
+    manualAdjustmentOut: 0,
+    lotteryCashSales: 0,
+    monazosCashSales: 0,
+    totalCashSales: 0,
+    lotteryPrizePayments: 0,
+    monazosPrizePayments: 0,
+    totalPrizePayments: 0,
+    operationalBalance: 0,
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -215,6 +239,47 @@ export default function HomeScreen() {
           )}
         </ThemedView>
 
+        {authUser ? (
+          <ThemedView style={styles.surfaceCard}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Caja del vendedor</ThemedText>
+              <ThemedText type="small" style={styles.sectionNote}>Saldo operativo del dia</ThemedText>
+            </View>
+            <View style={styles.balanceHero}>
+              <ThemedText type="small" style={styles.balanceHeroLabel}>Disponible para operar</ThemedText>
+              <ThemedText type="title" style={styles.balanceHeroValue}>CRC {todaySellerBalance.operationalBalance.toLocaleString('es-CR')}</ThemedText>
+              <ThemedText style={styles.balanceHeroHint}>No incluye comisiones. Si el admin te pasa dinero o devuelves caja, aqui se refleja.</ThemedText>
+            </View>
+            <View style={styles.balanceGrid}>
+              <View style={styles.balanceMetricCard}>
+                <ThemedText type="small" style={styles.balanceMetricLabel}>Ventas efectivo</ThemedText>
+                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.totalCashSales.toLocaleString('es-CR')}</ThemedText>
+              </View>
+              <View style={styles.balanceMetricCard}>
+                <ThemedText type="small" style={styles.balanceMetricLabel}>Premios pagados</ThemedText>
+                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.totalPrizePayments.toLocaleString('es-CR')}</ThemedText>
+              </View>
+              <View style={styles.balanceMetricCard}>
+                <ThemedText type="small" style={styles.balanceMetricLabel}>Admin te paso</ThemedText>
+                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.adminToSeller.toLocaleString('es-CR')}</ThemedText>
+              </View>
+              <View style={styles.balanceMetricCard}>
+                <ThemedText type="small" style={styles.balanceMetricLabel}>Tu entregaste</ThemedText>
+                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.sellerToAdmin.toLocaleString('es-CR')}</ThemedText>
+              </View>
+            </View>
+            <View style={styles.balanceSplitRow}>
+              <View style={styles.balanceMiniCard}>
+                <ThemedText type="small" style={styles.balanceMetricLabel}>Saldo inicial</ThemedText>
+                <ThemedText style={styles.balanceMiniValue}>CRC {todaySellerBalance.openingBalance.toLocaleString('es-CR')}</ThemedText>
+              </View>
+              <View style={styles.balanceMiniCard}>
+                <ThemedText type="small" style={styles.balanceMetricLabel}>Ajustes</ThemedText>
+                <ThemedText style={styles.balanceMiniValue}>+ CRC {todaySellerBalance.manualAdjustmentIn.toLocaleString('es-CR')} | - CRC {todaySellerBalance.manualAdjustmentOut.toLocaleString('es-CR')}</ThemedText>
+              </View>
+            </View>
+          </ThemedView>
+        ) : null}
         <ThemedView style={styles.surfaceCard}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle">Impresora del turno</ThemedText>
@@ -326,6 +391,17 @@ const styles = StyleSheet.create({
   surfaceCard: { borderRadius: 26, padding: 18, gap: 14, backgroundColor: '#ffffff' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   sectionNote: { color: '#8b7d70', flexShrink: 1 },
+  balanceHero: { borderRadius: 22, padding: 16, gap: 6, backgroundColor: '#fff7e2', borderWidth: 1, borderColor: '#f4ddb0' },
+  balanceHeroLabel: { color: '#9a3412', letterSpacing: 1.2 },
+  balanceHeroValue: { color: '#7f1d1d', fontSize: 28, lineHeight: 34, fontWeight: '800' },
+  balanceHeroHint: { color: '#7c6855', lineHeight: 20 },
+  balanceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  balanceMetricCard: { width: '48%', minWidth: 140, borderRadius: 18, padding: 12, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd', gap: 4 },
+  balanceMetricLabel: { color: '#8f6b45' },
+  balanceMetricValue: { color: '#22160d' },
+  balanceSplitRow: { flexDirection: 'row', gap: 10 },
+  balanceMiniCard: { flex: 1, borderRadius: 18, padding: 12, backgroundColor: '#fffaf1', borderWidth: 1, borderColor: '#f4e6cd', gap: 4 },
+  balanceMiniValue: { color: '#5f5348' },
   sessionPanel: { borderRadius: 20, padding: 14, gap: 12, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd' },
   sessionMeta: { gap: 4 },
   sessionText: { color: '#6f6255' },
@@ -355,3 +431,8 @@ const styles = StyleSheet.create({
   saleText: { color: '#5f5348' },
   saleMuted: { color: '#8b7d70' },
 });
+
+
+
+
+
