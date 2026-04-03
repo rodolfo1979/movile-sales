@@ -69,9 +69,13 @@ export type AuthUser = {
   id: string;
   email: string;
   role: string;
+  status?: string;
   tenantId: string;
   salesCommissionEnabled?: boolean;
   salesCommissionPercent?: number | null;
+  authorizedDeviceId?: string | null;
+  authorizedDeviceLabel?: string | null;
+  deviceBoundAt?: string | null;
   tenant?: { id: string; name: string; slug: string; plan?: string; status?: string };
 };
 export type LoginResponse = { accessToken: string; user: AuthUser };
@@ -130,6 +134,21 @@ export type MonazosEarningsSummary = {
 
 type ApiEnvelope<T> = { data: T; message?: string | string[] };
 
+let currentDeviceId = '';
+let currentDeviceLabel = '';
+
+export function configureDeviceIdentity(deviceId?: string | null, deviceLabel?: string | null) {
+  currentDeviceId = (deviceId || '').trim();
+  currentDeviceLabel = (deviceLabel || '').trim();
+}
+
+function buildAuthHeaders(token: string) {
+  return {
+    Authorization: 'Bearer ' + token,
+    ...(currentDeviceId ? { 'x-device-id': currentDeviceId } : {}),
+  };
+}
+
 function buildTenantQuery(tenantSlug = DEFAULT_TENANT_SLUG) {
   return '?tenantSlug=' + encodeURIComponent(tenantSlug);
 }
@@ -147,7 +166,7 @@ async function readEnvelope<T>(path: string) {
 
 async function readEnvelopeWithAuth<T>(path: string, token: string) {
   const response = await fetch(getApiBase() + path, {
-    headers: { Authorization: 'Bearer ' + token },
+    headers: buildAuthHeaders(token),
   });
   const payload = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok) {
@@ -160,7 +179,7 @@ async function readEnvelopeWithAuth<T>(path: string, token: string) {
 async function postEnvelopeWithAuth<T>(path: string, token: string, body: unknown) {
   const response = await fetch(getApiBase() + path, {
     method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    headers: { ...buildAuthHeaders(token), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const payload = (await response.json()) as ApiEnvelope<T>;
@@ -190,7 +209,7 @@ async function uploadProof(route: string, file: UploadableProof) {
   }
   return payload.data;
 }
-export async function loginAdmin(payload: { tenantSlug: string; email: string; password: string }) {
+export async function loginAdmin(payload: { tenantSlug: string; email: string; password: string; deviceId?: string; deviceLabel?: string }) {
   const response = await fetch(getApiBase() + '/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -395,4 +414,6 @@ export async function startSellerConnectionSession(token: string) {
 export async function sendSellerLocationOffline(token: string) {
   return await postEnvelopeWithAuth<{ ok: boolean; recordedAt: string }>('/tracking/offline', token, {});
 }
+
+
 

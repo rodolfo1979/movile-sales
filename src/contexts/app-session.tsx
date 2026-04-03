@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Device from 'expo-device';
 import * as Location from 'expo-location';
 import * as React from 'react';
 
 import { DEFAULT_TENANT_SLUG } from '../constants/config';
-import { loginAdmin, sendSellerLocationOffline, sendSellerLocationPing, startSellerConnectionSession, type AuthUser, type LoginResponse } from '../services/api';
+import { configureDeviceIdentity, loginAdmin, sendSellerLocationOffline, sendSellerLocationPing, startSellerConnectionSession, type AuthUser, type LoginResponse } from '../services/api';
 
 type RecentSale = {
   ticketCode: string;
@@ -49,6 +50,8 @@ const SALES_KEY = 'mobile-sales:recent-sales';
 const AUTH_KEY = 'mobile-sales:auth-session';
 const LOCATION_KEY = 'mobile-sales:location-enabled';
 const PRINTER_KEY = 'mobile-sales:printer-config';
+const DEVICE_ID_KEY = 'mobile-sales:device-id';
+const DEVICE_LABEL_KEY = 'mobile-sales:device-label';
 
 const AppSessionContext = React.createContext<AppSessionContextValue | null>(null);
 
@@ -65,6 +68,19 @@ function buildTenantInitials(label: string) {
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('');
 }
 
+function generateDeviceId() {
+  return 'mob-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function buildDeviceLabel() {
+  const brand = Device.brand?.trim();
+  const model = Device.modelName?.trim();
+  const os = Device.osName?.trim();
+  const pieces = [brand, model].filter(Boolean);
+  const label = pieces.join(' ');
+  return label ? `${label}${os ? ` | ${os}` : ''}` : `Telefono vendedor${os ? ` | ${os}` : ''}`;
+}
+
 export function AppSessionProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = React.useState(false);
   const [tenantSlug, setTenantSlugState] = React.useState(DEFAULT_TENANT_SLUG);
@@ -76,17 +92,21 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   const [lastLocationAt, setLastLocationAt] = React.useState<string | null>(null);
   const [printerConfig, setPrinterConfig] = React.useState<PrinterConfig | null>(null);
   const locationWatchRef = React.useRef<Location.LocationSubscription | null>(null);
+  const deviceIdRef = React.useRef('');
+  const deviceLabelRef = React.useRef('');
 
   React.useEffect(() => {
     let mounted = true;
     async function bootstrap() {
       try {
-        const [storedTenant, storedSales, storedAuth, storedLocation, storedPrinter] = await Promise.all([
+        const [storedTenant, storedSales, storedAuth, storedLocation, storedPrinter, storedDeviceId, storedDeviceLabel] = await Promise.all([
           AsyncStorage.getItem(TENANT_KEY),
           AsyncStorage.getItem(SALES_KEY),
           AsyncStorage.getItem(AUTH_KEY),
           AsyncStorage.getItem(LOCATION_KEY),
           AsyncStorage.getItem(PRINTER_KEY),
+          AsyncStorage.getItem(DEVICE_ID_KEY),
+          AsyncStorage.getItem(DEVICE_LABEL_KEY),
         ]);
         if (!mounted) return;
         if (storedTenant?.trim()) setTenantSlugState(storedTenant.trim());
@@ -119,6 +139,15 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
             setPrinterConfig(null);
           }
         }
+        const nextDeviceId = storedDeviceId?.trim() || generateDeviceId();
+        const nextDeviceLabel = storedDeviceLabel?.trim() || buildDeviceLabel();
+        deviceIdRef.current = nextDeviceId;
+        deviceLabelRef.current = nextDeviceLabel;
+        configureDeviceIdentity(nextDeviceId, nextDeviceLabel);
+        await Promise.all([
+          AsyncStorage.setItem(DEVICE_ID_KEY, nextDeviceId),
+          AsyncStorage.setItem(DEVICE_LABEL_KEY, nextDeviceLabel),
+        ]);
         setLocationEnabled(storedLocation === 'true');
       } finally {
         if (mounted) setReady(true);
@@ -220,10 +249,13 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   }
 
   async function login(payload: { email: string; password: string; tenantSlug?: string }) {
+    configureDeviceIdentity(deviceIdRef.current, deviceLabelRef.current);
     const response = await loginAdmin({
       email: payload.email,
       password: payload.password,
       tenantSlug: payload.tenantSlug?.trim() || tenantSlug,
+      deviceId: deviceIdRef.current,
+      deviceLabel: deviceLabelRef.current,
     });
     const nextTenant = response.user.tenant?.slug?.trim() || payload.tenantSlug?.trim() || tenantSlug;
     setAuthUser(response.user);
