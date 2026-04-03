@@ -1,116 +1,113 @@
-import {
-  Tabs,
-  TabList,
-  TabTrigger,
-  TabSlot,
-  TabTriggerSlotProps,
-  TabListProps,
-} from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
-import React from 'react';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import * as React from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+import { useAppSession } from '../contexts/app-session';
+import { type MobileRoute, useMobileNav } from '../contexts/mobile-nav';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+const tabs: Array<{ href: MobileRoute; label: string; short: string; protected?: boolean }> = [
+  { href: '/', label: 'Inicio', short: 'IN' },
+  { href: '/loteria', label: 'Loteria', short: 'LT', protected: true },
+  { href: '/monazos', label: '3 Monazos', short: '3M', protected: true },
+  { href: '/tickets', label: 'Tickets', short: 'TK', protected: true },
+  { href: '/ganancias', label: 'Ganancias', short: 'GN', protected: true },
+];
 
 export default function AppTabs() {
-  return (
-    <Tabs>
-      <TabSlot style={{ height: '100%' }} />
-      <TabList asChild>
-        <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
-          </TabTrigger>
-        </CustomTabList>
-      </TabList>
-    </Tabs>
+  const { pathname, replace } = useMobileNav();
+  const { authUser } = useAppSession();
+  const visibleTabs = React.useMemo(
+    () => tabs.filter((tab) => tab.href !== '/ganancias' || authUser?.salesCommissionEnabled),
+    [authUser?.salesCommissionEnabled],
   );
-}
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
-  return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
-}
-
-export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  function handleTabPress(tab: (typeof tabs)[number]) {
+    if (tab.protected && !authUser) {
+      Alert.alert('Acceso vendedor', 'Inicia sesion en Inicio para usar esta seccion.');
+      replace('/');
+      return;
+    }
+    replace(tab.href);
+  }
 
   return (
-    <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
-        </ThemedText>
-
-        {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
+    <ThemedView style={styles.shell}>
+      {visibleTabs.map((tab) => {
+        const active = pathname === tab.href;
+        const locked = tab.protected && !authUser;
+        return (
+          <Pressable key={String(tab.href)} onPress={() => handleTabPress(tab)} style={[styles.tab, active && styles.tabActive, locked && styles.tabLocked]}>
+            <View style={[styles.iconWrap, active && styles.iconWrapActive, locked && styles.iconWrapLocked]}>
+              <ThemedText type="small" style={active ? styles.iconTextActive : locked ? styles.iconTextLocked : styles.iconText}>{tab.short}</ThemedText>
+            </View>
+            <ThemedText type="small" style={active ? styles.labelActive : locked ? styles.labelLocked : styles.label}>{tab.label}</ThemedText>
           </Pressable>
-        </ExternalLink>
-      </ThemedView>
-    </View>
+        );
+      })}
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  tabListContainer: {
-    position: 'absolute',
-    width: '100%',
-    padding: Spacing.three,
+  shell: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    padding: 10,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dbe7f5',
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 18,
+  },
+  tabActive: {
+    backgroundColor: '#eff6ff',
+  },
+  tabLocked: {
+    opacity: 0.65,
+  },
+  iconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
   },
-  innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
+  iconWrapActive: {
+    backgroundColor: '#2563eb',
   },
-  brandText: {
-    marginRight: 'auto',
+  iconWrapLocked: {
+    backgroundColor: '#e2e8f0',
   },
-  pressed: {
-    opacity: 0.7,
+  iconText: {
+    color: '#475569',
+    letterSpacing: 0.8,
   },
-  tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+  iconTextActive: {
+    color: '#ffffff',
+    letterSpacing: 0.8,
   },
-  externalPressable: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
+  iconTextLocked: {
+    color: '#94a3b8',
+    letterSpacing: 0.8,
+  },
+  label: {
+    color: '#64748b',
+  },
+  labelActive: {
+    color: '#1e3a8a',
+  },
+  labelLocked: {
+    color: '#94a3b8',
   },
 });
