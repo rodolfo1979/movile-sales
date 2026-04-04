@@ -6,6 +6,7 @@ import HomeScreen from './screens/home';
 import LoteriaScreen from './screens/loteria';
 import MonazosScreen from './screens/monazos';
 import TicketsScreen from './screens/tickets';
+import PremiosScreen from './screens/premios';
 import GananciasScreen from './screens/ganancias';
 import PrinterScreen from './screens/printer';
 import AppTabs from './components/app-tabs';
@@ -35,6 +36,8 @@ function ActiveScreen() {
       return <MonazosScreen />;
     case '/tickets':
       return <TicketsScreen />;
+    case '/premios':
+      return <PremiosScreen />;
     case '/ganancias':
       return <GananciasScreen />;
     case '/printer':

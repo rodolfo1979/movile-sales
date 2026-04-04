@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,6 +28,14 @@ function formatMetricCurrency(value: number) {
   return value.toLocaleString('es-CR');
 }
 
+function todayIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function HomeScreen() {
   const router = useMobileNav();
   const {
@@ -39,7 +47,6 @@ export default function HomeScreen() {
     accessToken,
     login,
     logout,
-    locationEnabled,
     locationError,
     printerConfig,
   } = useAppSession();
@@ -74,7 +81,7 @@ export default function HomeScreen() {
           requests.push(
             fetchMyLotterySales(accessToken),
             fetchMyMonazosSales(accessToken),
-            fetchMySellerBalanceSummary(accessToken, { date: new Date().toISOString().slice(0, 10), sellerEmail: authUser.email }),
+            fetchMySellerBalanceSummary(accessToken, { date: todayIsoDate(), sellerEmail: authUser.email }),
           );
         }
         const [lotteriesData, monazosData, myLotterySales = [], myMonazosSales = [], sellerBalanceSummary = []] = await Promise.all(requests);
@@ -260,10 +267,6 @@ export default function HomeScreen() {
             bodyColor="#6d6256"
           />
           <View style={styles.heroMetaRow}>
-            <View style={styles.heroStatusPill}>
-              <View style={[styles.heroStatusDot, locationEnabled ? styles.heroStatusDotOn : styles.heroStatusDotOff]} />
-              <ThemedText type="small" style={styles.heroStatusText}>{locationEnabled ? 'Ubicacion activa' : 'Ubicacion inactiva'}</ThemedText>
-            </View>
             <View style={styles.heroStatusPillMuted}>
               <ThemedText type="small" style={styles.heroStatusTextMuted}>{authUser ? 'Vendedor activo' : 'Sin sesion'}</ThemedText>
             </View>
@@ -301,7 +304,7 @@ export default function HomeScreen() {
                 <View style={styles.sessionAvatar}><ThemedText type="small" style={styles.sessionAvatarText}>VD</ThemedText></View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <ThemedText style={styles.sessionPrimary}>{authUser.email}</ThemedText>
-                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} � Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
+                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} · Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
                 </View>
               </View>
               <Pressable style={styles.ghostButton} onPress={() => void handleLogout()}>
@@ -856,5 +859,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
 
 

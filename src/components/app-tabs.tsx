@@ -11,6 +11,7 @@ const tabs: Array<{ href: MobileRoute; label: string; short: string; protected?:
   { href: '/loteria', label: 'Loteria', short: 'LT', protected: true },
   { href: '/monazos', label: '3 Monazos', short: '3M', protected: true },
   { href: '/tickets', label: 'Tickets', short: 'TK', protected: true },
+  { href: '/premios', label: 'Premios', short: 'PR', protected: true },
   { href: '/ganancias', label: 'Ganancias', short: 'GN', protected: true },
 ];
 
