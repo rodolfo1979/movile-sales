@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-export type MobileRoute = '/' | '/loteria' | '/monazos' | '/tickets' | '/ganancias' | '/printer';
+export type MobileRoute = '/' | '/loteria' | '/monazos' | '/tickets' | '/premios' | '/ganancias' | '/printer';
 
 type MobileNavContextValue = {
   pathname: MobileRoute;
@@ -72,3 +72,4 @@ export function useMobileNav() {
   }
   return value;
 }
+

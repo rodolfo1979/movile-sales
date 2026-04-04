@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchLotteries, fetchMonazosGames, fetchMyLotterySales, fetchMyMonazosSales, fetchMySellerBalanceSummary, type Lottery, type MonazosGame, type SellerBalanceSummaryItem, type SellerSale } from '../services/api';
+import BrandHeader from '../components/brand-header';
 import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
+import { fetchLotteries, fetchMonazosGames, fetchMyLotterySales, fetchMyMonazosSales, fetchMySellerBalanceSummary, type Lottery, type MonazosGame, type SellerBalanceSummaryItem, type SellerSale } from '../services/api';
 import { useAppSession } from '../contexts/app-session';
 import { useMobileNav } from '../contexts/mobile-nav';
 
@@ -18,6 +19,14 @@ type HomeSale = {
   createdAt: string;
   sellerEmail?: string;
 };
+
+function formatCurrency(value: number) {
+  return 'CRC ' + value.toLocaleString('es-CR');
+}
+
+function formatMetricCurrency(value: number) {
+  return value.toLocaleString('es-CR');
+}
 
 export default function HomeScreen() {
   const router = useMobileNav();
@@ -171,68 +180,145 @@ export default function HomeScreen() {
     operationalBalance: 0,
   };
 
+  const quickActions = React.useMemo<Array<{ key: string; label: string; hint: string; badge: string; tone: 'warm' | 'soft' | 'sky' | 'mint' | 'violet' | 'neutral'; onPress: () => void; disabled: boolean }>>(() => {
+    const items: Array<{ key: string; label: string; hint: string; badge: string; tone: 'warm' | 'soft' | 'sky' | 'mint' | 'violet' | 'neutral'; onPress: () => void; disabled: boolean }> = [
+      {
+        key: 'lottery',
+        label: 'Loteria',
+        hint: lotteries.length ? `${lotteries.length} disponible(s)` : 'Sin sorteos abiertos',
+        badge: 'LT',
+        tone: 'warm',
+        onPress: () => router.openLottery(lotteries[0]?.id),
+        disabled: !authUser || lotteries.length === 0,
+      },
+      {
+        key: 'monazos',
+        label: '3 Monazos',
+        hint: monazosGames.length ? `${monazosGames.length} disponible(s)` : 'Sin juegos abiertos',
+        badge: '3M',
+        tone: 'soft',
+        onPress: () => router.openMonazos(monazosGames[0]?.id),
+        disabled: !authUser || monazosGames.length === 0,
+      },
+      {
+        key: 'tickets',
+        label: 'Tickets',
+        hint: 'Consulta y anula ventas',
+        badge: 'TK',
+        tone: 'sky',
+        onPress: () => router.replace('/tickets'),
+        disabled: !authUser,
+      },
+      {
+        key: 'premios',
+        label: 'Premios',
+        hint: 'Consulta reclamo y PIN',
+        badge: 'PR',
+        tone: 'mint',
+        onPress: () => router.replace('/premios'),
+        disabled: !authUser,
+      },
+    ];
+
+    if (authUser?.salesCommissionEnabled) {
+      items.push({
+        key: 'ganancias',
+        label: 'Ganancias',
+        hint: 'Comisiones y resumen',
+        badge: 'GN',
+        tone: 'violet' as const,
+        onPress: () => router.replace('/ganancias'),
+        disabled: !authUser,
+      });
+    }
+
+    items.push({
+      key: 'printer',
+      label: 'Impresora',
+      hint: printerConfig ? printerConfig.printerName : 'Configurar equipo',
+      badge: 'BT',
+      tone: 'neutral' as const,
+      onPress: () => router.replace('/printer'),
+      disabled: false,
+    });
+
+    return items;
+  }, [authUser, lotteries, monazosGames, printerConfig, router]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedView style={styles.heroCard}>
-          <View style={styles.heroTop}>
-            <Image source={require('../../assets/images/icon.png')} style={styles.brandIcon} resizeMode="contain" />
-            <View style={styles.heroTextWrap}>
-              <ThemedText type="small" style={styles.eyebrow}>ONE</ThemedText>
-              <ThemedText type="title" style={styles.heroTitle}>Centro de ventas</ThemedText>
-              <ThemedText style={styles.heroCopy}>{tenantLabel}</ThemedText>
-              <ThemedText style={styles.heroSubcopy}>Una sola app para elegir el juego, vender rapido y compartir el ticket.</ThemedText>
+          <View style={styles.heroGlowTop} />
+          <BrandHeader
+            section="CENTRO DE VENTAS"
+            title="ONE Movil"
+            description={tenantLabel}
+            note="Vende rapido, controla tu caja y resuelve premios desde una sola vista."
+            sectionColor="#d43a2f"
+            titleColor="#1f1d18"
+            bodyColor="#6d6256"
+          />
+          <View style={styles.heroMetaRow}>
+            <View style={styles.heroStatusPill}>
+              <View style={[styles.heroStatusDot, locationEnabled ? styles.heroStatusDotOn : styles.heroStatusDotOff]} />
+              <ThemedText type="small" style={styles.heroStatusText}>{locationEnabled ? 'Ubicacion activa' : 'Ubicacion inactiva'}</ThemedText>
             </View>
-            <View style={styles.statusColumn}>
-              <View style={[styles.statusDot, locationEnabled ? styles.statusDotOn : styles.statusDotOff]} />
-              <ThemedText type="small" style={styles.statusText}>{locationEnabled ? 'OK' : 'OFF'}</ThemedText>
-            </View>
-          </View>
-          <View style={styles.heroStats}>
-            <View style={styles.heroMetric}>
-              <ThemedText type="small" style={styles.heroMetricLabel}>Loterias</ThemedText>
-              <ThemedText type="subtitle" style={styles.heroMetricValue}>{loading ? '...' : String(lotteries.length)}</ThemedText>
-            </View>
-            <View style={styles.heroMetric}>
-              <ThemedText type="small" style={styles.heroMetricLabel}>3 Monazos</ThemedText>
-              <ThemedText type="subtitle" style={styles.heroMetricValue}>{loading ? '...' : String(monazosGames.length)}</ThemedText>
-            </View>
-            <View style={styles.heroMetric}>
-              <ThemedText type="small" style={styles.heroMetricLabel}>Vendedor</ThemedText>
-              <ThemedText type="small" style={styles.heroMetricValueSmall}>{authUser ? 'Activo' : 'Sin login'}</ThemedText>
+            <View style={styles.heroStatusPillMuted}>
+              <ThemedText type="small" style={styles.heroStatusTextMuted}>{authUser ? 'Vendedor activo' : 'Sin sesion'}</ThemedText>
             </View>
           </View>
-          {locationError ? <ThemedText style={styles.heroError}>{locationError}</ThemedText> : null}
-          {error ? <ThemedText style={styles.heroError}>{error}</ThemedText> : null}
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatCard}>
+              <ThemedText type="small" style={styles.heroStatLabel}>Loterias</ThemedText>
+              <ThemedText style={styles.heroStatValue}>{loading ? '...' : String(lotteries.length)}</ThemedText>
+            </View>
+            <View style={styles.heroStatCard}>
+              <ThemedText type="small" style={styles.heroStatLabel}>3 Monazos</ThemedText>
+              <ThemedText style={styles.heroStatValue}>{loading ? '...' : String(monazosGames.length)}</ThemedText>
+            </View>
+            <View style={styles.heroStatCard}>
+              <ThemedText type="small" style={styles.heroStatLabel}>Caja</ThemedText>
+              <ThemedText style={styles.heroStatValueSmall}>{authUser ? formatMetricCurrency(todaySellerBalance.operationalBalance) : 'Sin login'}</ThemedText>
+            </View>
+          </View>
+          {locationError ? <ThemedText style={styles.inlineError}>{locationError}</ThemedText> : null}
+          {error ? <ThemedText style={styles.inlineError}>{error}</ThemedText> : null}
         </ThemedView>
 
-        <ThemedView style={styles.surfaceCard}>
+        <ThemedView style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Acceso del vendedor</ThemedText>
-            <ThemedText type="small" style={styles.sectionNote}>{authUser ? 'Sesion activa' : 'Login requerido para vender'}</ThemedText>
+            <View>
+              <ThemedText style={styles.sectionEyebrow}>ACCESO</ThemedText>
+              <ThemedText style={styles.sectionTitle}>Sesion del vendedor</ThemedText>
+            </View>
+            <ThemedText type="small" style={styles.sectionNote}>{authUser ? 'Activa' : 'Requerida'}</ThemedText>
           </View>
+
           {authUser ? (
-            <View style={styles.sessionPanel}>
-              <View style={styles.sessionMeta}>
-                <ThemedText type="subtitle">{authUser.email}</ThemedText>
-                <ThemedText style={styles.sessionText}>Rol {authUser.role}</ThemedText>
-                <ThemedText style={styles.sessionText}>Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
+            <View style={styles.sessionCard}>
+              <View style={styles.sessionIdentity}>
+                <View style={styles.sessionAvatar}><ThemedText type="small" style={styles.sessionAvatarText}>VD</ThemedText></View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <ThemedText style={styles.sessionPrimary}>{authUser.email}</ThemedText>
+                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} · Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
+                </View>
               </View>
-              <Pressable style={styles.secondaryButton} onPress={() => void handleLogout()}>
-                <ThemedText type="small" style={styles.secondaryButtonText}>Cerrar sesion</ThemedText>
+              <Pressable style={styles.ghostButton} onPress={() => void handleLogout()}>
+                <ThemedText type="small" style={styles.ghostButtonText}>Cerrar sesion</ThemedText>
               </Pressable>
             </View>
           ) : (
-            <View style={styles.loginForm}>
-              <TextInput style={styles.input} value={tenantDraft} onChangeText={setTenantDraft} autoCapitalize="none" autoCorrect={false} placeholder="Slug del tenant" placeholderTextColor="#94a3b8" />
-              <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="Correo del vendedor" placeholderTextColor="#94a3b8" />
-              <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholder="Contrasena" placeholderTextColor="#94a3b8" />
-              <View style={styles.inlineButtons}>
-                <Pressable style={styles.secondaryButton} onPress={() => void applyTenant()}>
-                  {savingTenant ? <ActivityIndicator color="#9a3412" /> : <ThemedText type="small" style={styles.secondaryButtonText}>Aplicar tenant</ThemedText>}
+            <View style={styles.formWrap}>
+              <TextInput style={styles.input} value={tenantDraft} onChangeText={setTenantDraft} autoCapitalize="none" autoCorrect={false} placeholder="Slug del tenant" placeholderTextColor="#9aa4b2" />
+              <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="Correo del vendedor" placeholderTextColor="#9aa4b2" />
+              <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholder="Contrasena" placeholderTextColor="#9aa4b2" />
+              <View style={styles.formActions}>
+                <Pressable style={styles.ghostButton} onPress={() => void applyTenant()}>
+                  {savingTenant ? <ActivityIndicator color="#915228" /> : <ThemedText type="small" style={styles.ghostButtonText}>Aplicar tenant</ThemedText>}
                 </Pressable>
                 <Pressable style={styles.primaryButton} onPress={() => void handleLogin()}>
-                  {loggingIn ? <ActivityIndicator color="#ffffff" /> : <ThemedText type="small" style={styles.primaryButtonText}>Entrar</ThemedText>}
+                  {loggingIn ? <ActivityIndicator color="#fff" /> : <ThemedText type="small" style={styles.primaryButtonText}>Entrar</ThemedText>}
                 </Pressable>
               </View>
             </View>
@@ -240,125 +326,128 @@ export default function HomeScreen() {
         </ThemedView>
 
         {authUser ? (
-          <ThemedView style={styles.surfaceCard}>
+          <ThemedView style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Caja del vendedor</ThemedText>
-              <ThemedText type="small" style={styles.sectionNote}>Saldo operativo del dia</ThemedText>
+              <View>
+                <ThemedText style={styles.sectionEyebrow}>CAJA</ThemedText>
+                <ThemedText style={styles.sectionTitle}>Resumen operativo</ThemedText>
+              </View>
+              <ThemedText type="small" style={styles.sectionNote}>Solo lectura</ThemedText>
             </View>
+
             <View style={styles.balanceHero}>
               <ThemedText type="small" style={styles.balanceHeroLabel}>Disponible para operar</ThemedText>
-              <ThemedText type="title" style={styles.balanceHeroValue}>CRC {todaySellerBalance.operationalBalance.toLocaleString('es-CR')}</ThemedText>
-              <ThemedText style={styles.balanceHeroHint}>No incluye comisiones. Si el admin te pasa dinero o devuelves caja, aqui se refleja.</ThemedText>
+              <ThemedText style={styles.balanceHeroValue}>{formatCurrency(todaySellerBalance.operationalBalance)}</ThemedText>
+              <ThemedText type="small" style={styles.balanceHeroHint}>No incluye comisiones. Refleja caja real para ventas y pago de premios.</ThemedText>
             </View>
-            <View style={styles.balanceGrid}>
-              <View style={styles.balanceMetricCard}>
-                <ThemedText type="small" style={styles.balanceMetricLabel}>Ventas efectivo</ThemedText>
-                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.totalCashSales.toLocaleString('es-CR')}</ThemedText>
+
+            <View style={styles.metricGrid}>
+              <View style={styles.metricCard}>
+                <ThemedText type="small" style={styles.metricLabel}>Ventas efectivo</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatMetricCurrency(todaySellerBalance.totalCashSales)}</ThemedText>
               </View>
-              <View style={styles.balanceMetricCard}>
-                <ThemedText type="small" style={styles.balanceMetricLabel}>Premios pagados</ThemedText>
-                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.totalPrizePayments.toLocaleString('es-CR')}</ThemedText>
+              <View style={styles.metricCard}>
+                <ThemedText type="small" style={styles.metricLabel}>Premios pagados</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatMetricCurrency(todaySellerBalance.totalPrizePayments)}</ThemedText>
               </View>
-              <View style={styles.balanceMetricCard}>
-                <ThemedText type="small" style={styles.balanceMetricLabel}>Admin te paso</ThemedText>
-                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.adminToSeller.toLocaleString('es-CR')}</ThemedText>
+              <View style={styles.metricCard}>
+                <ThemedText type="small" style={styles.metricLabel}>Admin te paso</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatMetricCurrency(todaySellerBalance.adminToSeller)}</ThemedText>
               </View>
-              <View style={styles.balanceMetricCard}>
-                <ThemedText type="small" style={styles.balanceMetricLabel}>Tu entregaste</ThemedText>
-                <ThemedText type="subtitle" style={styles.balanceMetricValue}>CRC {todaySellerBalance.sellerToAdmin.toLocaleString('es-CR')}</ThemedText>
+              <View style={styles.metricCard}>
+                <ThemedText type="small" style={styles.metricLabel}>Tu entregaste</ThemedText>
+                <ThemedText style={styles.metricValue}>{formatMetricCurrency(todaySellerBalance.sellerToAdmin)}</ThemedText>
               </View>
             </View>
-            <View style={styles.balanceSplitRow}>
-              <View style={styles.balanceMiniCard}>
-                <ThemedText type="small" style={styles.balanceMetricLabel}>Saldo inicial</ThemedText>
-                <ThemedText style={styles.balanceMiniValue}>CRC {todaySellerBalance.openingBalance.toLocaleString('es-CR')}</ThemedText>
+
+            <View style={styles.subtleRow}>
+              <View style={styles.subtleCard}>
+                <ThemedText type="small" style={styles.subtleLabel}>Saldo inicial</ThemedText>
+                <ThemedText type="small" style={styles.subtleValue}>{formatCurrency(todaySellerBalance.openingBalance)}</ThemedText>
               </View>
-              <View style={styles.balanceMiniCard}>
-                <ThemedText type="small" style={styles.balanceMetricLabel}>Ajustes</ThemedText>
-                <ThemedText style={styles.balanceMiniValue}>+ CRC {todaySellerBalance.manualAdjustmentIn.toLocaleString('es-CR')} | - CRC {todaySellerBalance.manualAdjustmentOut.toLocaleString('es-CR')}</ThemedText>
+              <View style={styles.subtleCard}>
+                <ThemedText type="small" style={styles.subtleLabel}>Ajustes</ThemedText>
+                <ThemedText type="small" style={styles.subtleValue}>+ {formatMetricCurrency(todaySellerBalance.manualAdjustmentIn)} / - {formatMetricCurrency(todaySellerBalance.manualAdjustmentOut)}</ThemedText>
               </View>
             </View>
           </ThemedView>
         ) : null}
-        <ThemedView style={styles.surfaceCard}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Impresora del turno</ThemedText>
-            <ThemedText type="small" style={styles.sectionNote}>{printerConfig ? printerConfig.printerName : 'Sin configurar'}</ThemedText>
-          </View>
-          <Pressable style={styles.catalogRow} onPress={() => router.replace('/printer')}>
-            <View style={styles.catalogBadge}><ThemedText type="small" style={styles.catalogBadgeText}>PR</ThemedText></View>
-            <View style={styles.catalogCopy}>
-              <ThemedText type="subtitle">Configuracion de impresora</ThemedText>
-              <ThemedText style={styles.catalogHint}>{printerConfig ? 'Lista para auto print' : 'Conecta y guarda la impresora del vendedor'}</ThemedText>
-            </View>
-            <ThemedText type="small" style={styles.catalogAction}>Abrir</ThemedText>
-          </Pressable>
-        </ThemedView>
 
-        <ThemedView style={styles.surfaceCard}>
+        <ThemedView style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Seleccion de venta</ThemedText>
-            <ThemedText type="small" style={styles.sectionNote}>Toca el juego que el cliente desea jugar</ThemedText>
-          </View>
-          <View style={styles.catalogSection}>
-            <ThemedText type="small" style={styles.catalogEyebrow}>LOTERIAS DISPONIBLES</ThemedText>
-            <View style={styles.catalogList}>
-              {lotteries.length ? lotteries.map((lottery) => (
-                <Pressable key={lottery.id} style={styles.catalogRow} onPress={() => router.openLottery(lottery.id)}>
-                  <View style={styles.catalogBadge}><ThemedText type="small" style={styles.catalogBadgeText}>LT</ThemedText></View>
-                  <View style={styles.catalogCopy}>
-                    <ThemedText type="subtitle">{lottery.name}</ThemedText>
-                    <ThemedText style={styles.catalogHint}>{lottery.draws.length} sorteo(s) disponible(s)</ThemedText>
-                  </View>
-                  <ThemedText type="small" style={styles.catalogAction}>Abrir</ThemedText>
-                </Pressable>
-              )) : <ThemedText style={styles.emptyText}>No hay loterias abiertas en este momento.</ThemedText>}
+            <View>
+              <ThemedText style={styles.sectionEyebrow}>ACCESOS</ThemedText>
+              <ThemedText style={styles.sectionTitle}>Centro rapido</ThemedText>
             </View>
+            <ThemedText type="small" style={styles.sectionNote}>Flujo diario</ThemedText>
           </View>
-          <View style={styles.catalogSection}>
-            <ThemedText type="small" style={styles.catalogEyebrow}>3 MONAZOS DISPONIBLES</ThemedText>
-            <View style={styles.catalogList}>
-              {monazosGames.length ? monazosGames.map((game) => (
-                <Pressable key={game.id} style={styles.catalogRow} onPress={() => router.openMonazos(game.id)}>
-                  <View style={[styles.catalogBadge, styles.catalogBadgeAlt]}><ThemedText type="small" style={styles.catalogBadgeText}>3M</ThemedText></View>
-                  <View style={styles.catalogCopy}>
-                    <ThemedText type="subtitle">{game.name}</ThemedText>
-                    <ThemedText style={styles.catalogHint}>{game.draws.length} sorteo(s) disponible(s)</ThemedText>
+
+          <View style={styles.quickGrid}>
+            {quickActions.map((item) => {
+              const toneStyle =
+                item.tone === 'warm'
+                  ? styles.quickBadgeWarm
+                  : item.tone === 'soft'
+                    ? styles.quickBadgeSoft
+                    : item.tone === 'sky'
+                      ? styles.quickBadgeSky
+                      : item.tone === 'mint'
+                        ? styles.quickBadgeMint
+                        : item.tone === 'violet'
+                          ? styles.quickBadgeViolet
+                          : styles.quickBadgeNeutral;
+
+              return (
+                <Pressable
+                  key={item.key}
+                  style={[styles.quickCard, item.disabled && styles.quickCardDisabled]}
+                  onPress={item.onPress}
+                  disabled={item.disabled}
+                >
+                  <View style={[styles.quickBadge, toneStyle]}>
+                    <ThemedText type="small" style={styles.quickBadgeText}>{item.badge}</ThemedText>
                   </View>
-                  <ThemedText type="small" style={styles.catalogAction}>Abrir</ThemedText>
+                  <ThemedText style={styles.quickTitle}>{item.label}</ThemedText>
+                  <ThemedText type="small" style={styles.quickHint}>{item.hint}</ThemedText>
                 </Pressable>
-              )) : <ThemedText style={styles.emptyText}>No hay juegos de 3 Monazos abiertos.</ThemedText>}
-            </View>
+              );
+            })}
           </View>
         </ThemedView>
 
-        <ThemedView style={styles.surfaceCard}>
+        <ThemedView style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Ventas recientes</ThemedText>
+            <View>
+              <ThemedText style={styles.sectionEyebrow}>ACTIVIDAD</ThemedText>
+              <ThemedText style={styles.sectionTitle}>Ventas recientes</ThemedText>
+            </View>
             <ThemedText type="small" style={styles.sectionNote}>{sellerRecentSales.length} visibles</ThemedText>
           </View>
+
           {sellerRecentSales.length ? (
             <View style={styles.salesList}>
               {sellerRecentSales.map((sale) => (
                 <View key={sale.ticketCode} style={styles.saleCard}>
-                  <View style={styles.saleTop}>
-                    <View style={{ flex: 1 }}>
-                      <ThemedText type="subtitle">{sale.ticketCode}</ThemedText>
-                      <ThemedText style={styles.saleText}>{sale.gameLabel}</ThemedText>
+                  <View style={styles.saleTopRow}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <ThemedText style={styles.saleCode}>{sale.ticketCode}</ThemedText>
+                      <ThemedText type="small" style={styles.saleGame}>{sale.gameLabel}</ThemedText>
                     </View>
-                    <View style={styles.saleStatus}>
+                    <View style={styles.saleStatusPill}>
                       <ThemedText type="small" style={styles.saleStatusText}>{sale.status}</ThemedText>
                     </View>
                   </View>
-                  <ThemedText style={styles.saleText}>{sale.customerName}</ThemedText>
-                  <ThemedText style={styles.saleText}>{sale.drawLabel}</ThemedText>
-                  <ThemedText style={styles.saleText}>Total {sale.totalAmount}</ThemedText>
-                  <ThemedText style={styles.saleMuted}>{sale.createdAt}</ThemedText>
+                  <ThemedText type="small" style={styles.saleMeta}>{sale.customerName}</ThemedText>
+                  <ThemedText type="small" style={styles.saleMeta}>{sale.drawLabel}</ThemedText>
+                  <View style={styles.saleBottomRow}>
+                    <ThemedText style={styles.saleAmount}>{sale.totalAmount}</ThemedText>
+                    <ThemedText type="small" style={styles.saleTime}>{sale.createdAt}</ThemedText>
+                  </View>
                 </View>
               ))}
             </View>
           ) : (
-            <ThemedText style={styles.emptyText}>{authUser ? 'Todavia no hay ventas registradas para este vendedor.' : 'Inicia sesion para ver el historial del vendedor.'}</ThemedText>
+            <ThemedText type="small" style={styles.emptyState}>{authUser ? 'Todavia no hay ventas registradas para este vendedor.' : 'Inicia sesion para ver la actividad del vendedor.'}</ThemedText>
           )}
         </ThemedView>
       </ScrollView>
@@ -367,72 +456,405 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f4f1ea' },
-  content: { padding: 16, gap: 14, paddingBottom: 26 },
-  heroCard: { borderRadius: 30, padding: 20, gap: 14, backgroundColor: '#fffaf1', borderWidth: 1, borderColor: '#f6d8a8' },
-  heroTop: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  brandIcon: { width: 66, height: 66, borderRadius: 18, backgroundColor: '#fff' },
-  heroTextWrap: { flex: 1, gap: 3 },
-  eyebrow: { color: '#b91c1c', letterSpacing: 2.8, fontWeight: '800' },
-  heroTitle: { color: '#22160d', fontSize: 30, lineHeight: 36, fontWeight: '800' },
-  heroCopy: { color: '#6b3d15', fontWeight: '700' },
-  heroSubcopy: { color: '#7c6855', lineHeight: 20 },
-  statusColumn: { alignItems: 'center', gap: 6 },
-  statusDot: { width: 14, height: 14, borderRadius: 999, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
-  statusDotOn: { backgroundColor: '#22c55e' },
-  statusDotOff: { backgroundColor: '#ef4444' },
-  statusText: { color: '#7c6855' },
-  heroStats: { flexDirection: 'row', gap: 10 },
-  heroMetric: { flex: 1, borderRadius: 18, padding: 12, backgroundColor: '#fff' },
-  heroMetricLabel: { color: '#8f6b45' },
-  heroMetricValue: { color: '#22160d' },
-  heroMetricValueSmall: { color: '#22160d' },
-  heroError: { color: '#b91c1c', lineHeight: 20 },
-  surfaceCard: { borderRadius: 26, padding: 18, gap: 14, backgroundColor: '#ffffff' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  sectionNote: { color: '#8b7d70', flexShrink: 1 },
-  balanceHero: { borderRadius: 22, padding: 16, gap: 6, backgroundColor: '#fff7e2', borderWidth: 1, borderColor: '#f4ddb0' },
-  balanceHeroLabel: { color: '#9a3412', letterSpacing: 1.2 },
-  balanceHeroValue: { color: '#7f1d1d', fontSize: 28, lineHeight: 34, fontWeight: '800' },
-  balanceHeroHint: { color: '#7c6855', lineHeight: 20 },
-  balanceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  balanceMetricCard: { width: '48%', minWidth: 140, borderRadius: 18, padding: 12, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd', gap: 4 },
-  balanceMetricLabel: { color: '#8f6b45' },
-  balanceMetricValue: { color: '#22160d' },
-  balanceSplitRow: { flexDirection: 'row', gap: 10 },
-  balanceMiniCard: { flex: 1, borderRadius: 18, padding: 12, backgroundColor: '#fffaf1', borderWidth: 1, borderColor: '#f4e6cd', gap: 4 },
-  balanceMiniValue: { color: '#5f5348' },
-  sessionPanel: { borderRadius: 20, padding: 14, gap: 12, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd' },
-  sessionMeta: { gap: 4 },
-  sessionText: { color: '#6f6255' },
-  loginForm: { gap: 10 },
-  input: { borderRadius: 16, minHeight: 54, paddingHorizontal: 16, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd', color: '#22160d' },
-  inlineButtons: { flexDirection: 'row', gap: 10 },
-  primaryButton: { flex: 1, borderRadius: 16, minHeight: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: '#c81e1e' },
-  primaryButtonText: { color: '#fff7d1' },
-  secondaryButton: { flex: 1, borderRadius: 16, minHeight: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff3cf' },
-  secondaryButtonText: { color: '#9a3412' },
-  catalogSection: { gap: 10 },
-  catalogEyebrow: { color: '#9a3412', letterSpacing: 1.6 },
-  catalogList: { gap: 10 },
-  catalogRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd' },
-  catalogBadge: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff3cf' },
-  catalogBadgeAlt: { backgroundColor: '#fee2e2' },
-  catalogBadgeText: { color: '#b91c1c', fontWeight: '800' },
-  catalogCopy: { flex: 1, gap: 2 },
-  catalogHint: { color: '#7c6855' },
-  catalogAction: { color: '#b91c1c' },
-  emptyText: { color: '#8b7d70', lineHeight: 20 },
-  salesList: { gap: 10 },
-  saleCard: { borderRadius: 18, padding: 14, gap: 6, backgroundColor: '#faf6ee', borderWidth: 1, borderColor: '#efe2cd' },
-  saleTop: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  saleStatus: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#fff3cf' },
-  saleStatusText: { color: '#9a3412' },
-  saleText: { color: '#5f5348' },
-  saleMuted: { color: '#8b7d70' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#eef3f8',
+  },
+  content: {
+    padding: 16,
+    gap: 14,
+    paddingBottom: 28,
+  },
+  heroCard: {
+    borderRadius: 30,
+    padding: 18,
+    gap: 14,
+    backgroundColor: '#fffaf2',
+    borderWidth: 1,
+    borderColor: '#f2e3cf',
+    overflow: 'hidden',
+  },
+  heroGlowTop: {
+    position: 'absolute',
+    top: -20,
+    right: -10,
+    width: 140,
+    height: 140,
+    borderRadius: 999,
+    backgroundColor: '#fde7cf',
+    opacity: 0.55,
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  heroStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+  },
+  heroStatusPillMuted: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#f5ede1',
+  },
+  heroStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  heroStatusDotOn: {
+    backgroundColor: '#22c55e',
+  },
+  heroStatusDotOff: {
+    backgroundColor: '#ef4444',
+  },
+  heroStatusText: {
+    color: '#4b5563',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  heroStatusTextMuted: {
+    color: '#75695b',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heroStatCard: {
+    flex: 1,
+    minHeight: 76,
+    borderRadius: 20,
+    padding: 12,
+    gap: 5,
+    backgroundColor: '#fff',
+  },
+  heroStatLabel: {
+    color: '#8b6c49',
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.4,
+  },
+  heroStatValue: {
+    color: '#1f1d18',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  heroStatValueSmall: {
+    color: '#1f1d18',
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  inlineError: {
+    color: '#b91c1c',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sectionCard: {
+    borderRadius: 26,
+    padding: 16,
+    gap: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e7edf4',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  sectionEyebrow: {
+    color: '#b45309',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.6,
+    fontWeight: '800',
+  },
+  sectionTitle: {
+    color: '#17212b',
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: '800',
+  },
+  sectionNote: {
+    color: '#7c8795',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  sessionCard: {
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+    backgroundColor: '#f7fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  sessionIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sessionAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fee2e2',
+  },
+  sessionAvatarText: {
+    color: '#b91c1c',
+    fontWeight: '800',
+  },
+  sessionPrimary: {
+    color: '#17212b',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  sessionSecondary: {
+    color: '#6b7280',
+  },
+  formWrap: {
+    gap: 10,
+  },
+  input: {
+    minHeight: 52,
+    borderRadius: 18,
+    paddingHorizontal: 15,
+    backgroundColor: '#f8fbff',
+    borderWidth: 1,
+    borderColor: '#d9e5f2',
+    color: '#17212b',
+    fontSize: 15,
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  primaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#cd2e24',
+  },
+  primaryButtonText: {
+    color: '#fff7ec',
+    fontWeight: '800',
+  },
+  ghostButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff3de',
+  },
+  ghostButtonText: {
+    color: '#9a4e1a',
+    fontWeight: '700',
+  },
+  balanceHero: {
+    borderRadius: 22,
+    padding: 16,
+    gap: 4,
+    backgroundColor: '#fff7e8',
+    borderWidth: 1,
+    borderColor: '#f6e1bf',
+  },
+  balanceHeroLabel: {
+    color: '#a16207',
+    letterSpacing: 1.1,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  balanceHeroValue: {
+    color: '#1f1d18',
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: '800',
+  },
+  balanceHeroHint: {
+    color: '#766453',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  metricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  metricCard: {
+    width: '48%',
+    minWidth: 140,
+    borderRadius: 18,
+    padding: 12,
+    gap: 4,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  metricLabel: {
+    color: '#7b8794',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  metricValue: {
+    color: '#17212b',
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '800',
+  },
+  subtleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  subtleCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 12,
+    gap: 3,
+    backgroundColor: '#fbfcfe',
+    borderWidth: 1,
+    borderColor: '#edf2f7',
+  },
+  subtleLabel: {
+    color: '#7b8794',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  subtleValue: {
+    color: '#334155',
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickCard: {
+    width: '48%',
+    minWidth: 148,
+    borderRadius: 22,
+    padding: 14,
+    gap: 10,
+    backgroundColor: '#fbfdff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  quickCardDisabled: {
+    opacity: 0.55,
+  },
+  quickBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  quickBadgeWarm: {
+    backgroundColor: '#fff1d6',
+  },
+  quickBadgeSoft: {
+    backgroundColor: '#ffe4e6',
+  },
+  quickBadgeSky: {
+    backgroundColor: '#e0f2fe',
+  },
+  quickBadgeMint: {
+    backgroundColor: '#dcfce7',
+  },
+  quickBadgeViolet: {
+    backgroundColor: '#ede9fe',
+  },
+  quickBadgeNeutral: {
+    backgroundColor: '#e2e8f0',
+  },
+  quickBadgeText: {
+    color: '#17212b',
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  quickTitle: {
+    color: '#17212b',
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '800',
+  },
+  quickHint: {
+    color: '#6b7280',
+    lineHeight: 18,
+  },
+  salesList: {
+    gap: 10,
+  },
+  saleCard: {
+    borderRadius: 20,
+    padding: 14,
+    gap: 8,
+    backgroundColor: '#fbfdff',
+    borderWidth: 1,
+    borderColor: '#e5edf6',
+  },
+  saleTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  saleCode: {
+    color: '#17212b',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  saleGame: {
+    color: '#667085',
+  },
+  saleStatusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#fff3de',
+  },
+  saleStatusText: {
+    color: '#9a4e1a',
+  },
+  saleMeta: {
+    color: '#667085',
+    lineHeight: 18,
+  },
+  saleBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  saleAmount: {
+    color: '#111827',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  saleTime: {
+    color: '#94a3b8',
+    textAlign: 'right',
+    flex: 1,
+  },
+  emptyState: {
+    color: '#7c8795',
+    lineHeight: 18,
+  },
 });
-
-
-
 
 

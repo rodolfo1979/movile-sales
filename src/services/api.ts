@@ -39,6 +39,7 @@ export type MonazosGame = {
 };
 
 export type TicketLookup = {
+  id: string;
   ticketCode: string;
   customerName?: string;
   customerPhone?: string;
@@ -46,6 +47,10 @@ export type TicketLookup = {
   totalAmount: string;
   paymentMethod: string;
   status: string;
+  sellerEmail?: string | null;
+  cancelledAt?: string | null;
+  cancelledByEmail?: string | null;
+  cancellationReason?: string | null;
   prizeStatus: string;
   lottery?: { name: string };
   game?: { name: string };
@@ -148,6 +153,47 @@ export type SellerBalanceSummaryItem = {
   totalPrizePayments: number;
   operationalBalance: number;
 };
+export type MobileLotteryPrizeClaim = {
+  id: string;
+  claimCode: string;
+  status: string;
+  prizeAmount: string;
+  paidAmount: string;
+  pendingAmount: string;
+  paidAt?: string | null;
+  customerName?: string;
+  customerPhone?: string;
+  ticketCode: string;
+  lotteryName: string;
+  drawName: string;
+  drawTime: string;
+  drawDate?: string | null;
+  numberCount: number;
+  numbers: Array<{ numberValue: string; amount: string; reventadoAmount?: string }>;
+  gameType: 'lottery';
+};
+
+export type MobileMonazosPrizeClaim = {
+  id: string;
+  claimCode: string;
+  status: string;
+  prizeAmount: string;
+  paidAmount: string;
+  pendingAmount: string;
+  paidAt?: string | null;
+  customerName?: string;
+  customerPhone?: string;
+  ticketCode: string;
+  gameName: string;
+  drawName: string;
+  drawTime: string;
+  drawDate?: string | null;
+  playCount: number;
+  plays: Array<{ mode: 'orden' | 'desorden' | 'gallo_tapado'; digits: string; amount: string }>;
+  gameType: 'monazos';
+};
+
+export type MobilePrizeClaim = MobileLotteryPrizeClaim | MobileMonazosPrizeClaim;
 type ApiEnvelope<T> = { data: T; message?: string | string[] };
 
 let currentDeviceId = '';
@@ -290,6 +336,12 @@ export async function fetchTicketByCode(code: string, tenantSlug = DEFAULT_TENAN
   return await readEnvelope<TicketLookup | null>(route);
 }
 
+export async function cancelMobileTicket(ticketId: string, ticketCode: string, token: string, reason: string) {
+  const route = ticketCode.trim().toUpperCase().startsWith('MZ-')
+    ? '/monazos/tickets/' + ticketId + '/cancel-mobile'
+    : '/tickets/' + ticketId + '/cancel-mobile';
+  return await postEnvelopeWithAuth<TicketLookup>(route, token, { reason });
+}
 export function todayTicketDate(drawTime?: string) {
   const now = new Date();
   const year = now.getFullYear();
@@ -392,6 +444,40 @@ export async function fetchMyMonazosEarnings(token: string, filters?: { date?: s
   return await readEnvelopeWithAuth<MonazosEarningsSummary>('/monazos/my-earnings' + suffix, token);
 }
 
+export async function fetchMobilePrizeClaim(claimCode: string, token: string) {
+  const normalized = claimCode.trim().toUpperCase();
+  if (!normalized) {
+    throw new Error('Escribe el codigo del reclamo para consultar el premio.');
+  }
+
+  if (normalized.startsWith('MZC-')) {
+    const claim = await readEnvelopeWithAuth<MobileMonazosPrizeClaim>('/monazos/prizes/mobile-claim/' + encodeURIComponent(normalized), token);
+    return { ...claim, gameType: 'monazos' as const };
+  }
+
+  const claim = await readEnvelopeWithAuth<MobileLotteryPrizeClaim>('/prizes/mobile-claim/' + encodeURIComponent(normalized), token);
+  return { ...claim, gameType: 'lottery' as const };
+}
+
+export async function payMobilePrize(
+  payload: { claimCode: string; verificationCode: string; paymentMethod: string; reference?: string; notes?: string },
+  token: string,
+) {
+  const normalized = payload.claimCode.trim().toUpperCase();
+  if (normalized.startsWith('MZC-')) {
+    const result = await postEnvelopeWithAuth<{ payment: { amount: string }; claim: MobileMonazosPrizeClaim }>('/monazos/prizes/mobile-pay', token, payload);
+    return {
+      payment: result.payment,
+      claim: { ...result.claim, gameType: 'monazos' as const },
+    };
+  }
+
+  const result = await postEnvelopeWithAuth<{ payment: { amount: string }; claim: MobileLotteryPrizeClaim }>('/prizes/mobile-pay', token, payload);
+  return {
+    payment: result.payment,
+    claim: { ...result.claim, gameType: 'lottery' as const },
+  };
+}
 export async function fetchMySellerBalanceSummary(token: string, filters?: { date?: string; fromDate?: string; toDate?: string; sellerEmail?: string }) {
   const query = new URLSearchParams();
   if (filters?.date) query.set('date', filters.date);
@@ -440,6 +526,9 @@ export async function startSellerConnectionSession(token: string) {
 export async function sendSellerLocationOffline(token: string) {
   return await postEnvelopeWithAuth<{ ok: boolean; recordedAt: string }>('/tracking/offline', token, {});
 }
+
+
+
 
 
 

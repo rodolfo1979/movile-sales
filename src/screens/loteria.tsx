@@ -201,8 +201,12 @@ export default function LoteriaScreen() {
     });
   }
 
-  function removeEntry(entryId: string) {
-    setEntries((current) => current.filter((item) => item.id !== entryId));
+function removeEntry(entryId: string) {
+  setEntries((current) => current.filter((item) => item.id !== entryId));
+}
+
+  function formatCurrency(value: number) {
+    return 'CRC ' + value.toLocaleString('es-CR');
   }
 
   async function pickProof() {
@@ -228,6 +232,14 @@ export default function LoteriaScreen() {
     }
     if (!entries.length) {
       setError('Agrega al menos una jugada antes de confirmar la venta.');
+      return;
+    }
+    if (!customerPhone.trim()) {
+      setError('El telefono del cliente es obligatorio para enviar el PIN de pago.');
+      return;
+    }
+    if (customerPhone.replace(/\D/g, '').length < 8) {
+      setError('Ingresa un telefono valido de al menos 8 digitos.');
       return;
     }
     if (paymentMethod === 'sinpe' && !selectedProof) {
@@ -336,7 +348,7 @@ export default function LoteriaScreen() {
         ) : null}
 
         <ThemedView style={styles.surfaceCard}>
-          <ThemedText type="subtitle">Loteria y sorteo</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Loteria y sorteo</ThemedText>
           <View style={styles.chipWrap}>
             {lotteries.map((lottery) => (
               <Pressable key={lottery.id} onPress={() => chooseLottery(lottery)} style={[styles.selectorChip, selectedLotteryId === lottery.id && styles.selectorChipActive]}>
@@ -349,7 +361,7 @@ export default function LoteriaScreen() {
             <View style={styles.drawList}>
               {selectedLottery.draws.map((draw) => (
                 <Pressable key={draw.id} onPress={() => { clearFeedback(); setSelectedDrawId(draw.id); }} style={[styles.drawRow, selectedDrawId === draw.id && styles.drawRowActive]}>
-                  <ThemedText type="subtitle">{draw.name}</ThemedText>
+                  <ThemedText style={styles.drawTitle}>{draw.name}</ThemedText>
                   <ThemedText style={styles.drawMeta}>{draw.drawTime}</ThemedText>
                   <ThemedText style={styles.drawHint}>{getDrawClosingLabel(draw.drawTime, draw.cutoffMinutes)}</ThemedText>
                 </Pressable>
@@ -361,7 +373,7 @@ export default function LoteriaScreen() {
         {selectedLottery && selectedDraw ? (
           <ThemedView style={styles.cashierCard}>
             <View style={styles.brandBar}>
-              <ThemedText type="subtitle" style={styles.brandBarText}>{selectedLottery.name}</ThemedText>
+              <ThemedText style={styles.brandBarText}>{selectedLottery.name}</ThemedText>
               <ThemedText style={styles.brandBarMeta}>{selectedDraw.name} | {selectedDraw.drawTime}</ThemedText>
             </View>
 
@@ -378,7 +390,7 @@ export default function LoteriaScreen() {
                 value={customerPhone}
                 onChangeText={(value) => { clearFeedback(); setCustomerPhone(value.replace(/\D/g, '')); }}
                 keyboardType="number-pad"
-                placeholder="Telefono"
+                placeholder="Telefono del cliente"
                 placeholderTextColor="#94a3b8"
               />
             </View>
@@ -425,10 +437,10 @@ export default function LoteriaScreen() {
               style={[styles.multiPlayToggle, multiPlayEnabled && styles.multiPlayToggleActive]}
             >
               <View style={[styles.multiPlayCheckbox, multiPlayEnabled && styles.multiPlayCheckboxActive]}>
-                <ThemedText style={multiPlayEnabled ? styles.multiPlayCheckboxTextActive : styles.multiPlayCheckboxText}>✓</ThemedText>
+                <ThemedText style={multiPlayEnabled ? styles.multiPlayCheckboxTextActive : styles.multiPlayCheckboxText}>OK</ThemedText>
               </View>
               <View style={styles.multiPlayTextWrap}>
-                <ThemedText type="small" style={styles.multiPlayTitle}>Multijugada</ThemedText>
+                <ThemedText style={styles.multiPlayTitle}>Multijugada</ThemedText>
                 <ThemedText style={styles.multiPlayHint}>
                   {multiPlayEnabled
                     ? 'Activa: cada 2 digitos se agrega una jugada con el mismo monto.'
@@ -450,13 +462,13 @@ export default function LoteriaScreen() {
             <View style={styles.keypadGrid}>
               {keypad.map((key) => (
                 <Pressable key={key} onPress={() => pressKey(key)} style={[styles.keypadButton, key === '+' && styles.keypadButtonAccent, key === '<' && styles.keypadButtonNeutral]}>
-                  <ThemedText type="subtitle" style={key === '+' ? styles.keypadTextAccent : styles.keypadText}>{key === '<' ? 'DEL' : key}</ThemedText>
+                  <ThemedText style={key === '+' ? styles.keypadTextAccent : styles.keypadText}>{key === '<' ? 'DEL' : key}</ThemedText>
                 </Pressable>
               ))}
             </View>
 
             <View style={styles.summaryRow}>
-              <ThemedText type="subtitle" style={styles.totalText}>Total CRC {totalAmount}</ThemedText>
+              <ThemedText style={styles.totalText}>Total CRC {totalAmount}</ThemedText>
               <ThemedText style={styles.summaryHint}>{entries.length} jugada(s)</ThemedText>
             </View>
 
@@ -464,13 +476,13 @@ export default function LoteriaScreen() {
               {entries.length ? entries.map((entry) => (
                 <View key={entry.id} style={styles.entryRow}>
                   <View style={{ flex: 1 }}>
-                    <ThemedText type="subtitle">#{entry.numberValue}</ThemedText>
+                    <ThemedText style={styles.entryNumber}>#{entry.numberValue}</ThemedText>
                     <ThemedText style={styles.entryMeta}>
                       CRC {entry.amount}{entry.reventadoAmount > 0 ? `  |  Rev. CRC ${entry.reventadoAmount}` : ''}
                     </ThemedText>
                   </View>
                   <Pressable onPress={() => removeEntry(entry.id)} style={styles.removeButton}>
-                    <ThemedText type="subtitle" style={styles.removeButtonText}>×</ThemedText>
+                    <ThemedText style={styles.removeButtonText}>X</ThemedText>
                   </Pressable>
                 </View>
               )) : (
@@ -490,7 +502,7 @@ export default function LoteriaScreen() {
               <ThemedView style={styles.proofCard}>
                 <View style={styles.proofHeader}>
                   <View style={{ flex: 1 }}>
-                    <ThemedText type="subtitle">Comprobante</ThemedText>
+                    <ThemedText style={styles.sectionSubheading}>Comprobante</ThemedText>
                     <ThemedText style={styles.subtle}>Se adjunta al confirmar.</ThemedText>
                   </View>
                   <Pressable style={styles.proofButton} onPress={() => void pickProof()}>
@@ -515,7 +527,7 @@ export default function LoteriaScreen() {
             ) : null}
 
             <Pressable style={[styles.confirmButton, saving && styles.confirmButtonDisabled]} onPress={() => void handleSell()} disabled={saving}>
-              {saving ? <ActivityIndicator color="#ffffff" /> : <ThemedText type="subtitle" style={styles.confirmButtonText}>Confirmar venta</ThemedText>}
+              {saving ? <ActivityIndicator color="#ffffff" /> : <ThemedText style={styles.confirmButtonText}>Confirmar venta</ThemedText>}
             </Pressable>
           </ThemedView>
         ) : null}
@@ -523,7 +535,7 @@ export default function LoteriaScreen() {
         {lastTicket ? (
           <ThemedView style={styles.ticketCard}>
             <ThemedText type="small" style={styles.ticketEyebrow}>ULTIMO TICKET</ThemedText>
-            <ThemedText type="title" style={styles.ticketCode}>{lastTicket.ticketCode}</ThemedText>
+            <ThemedText style={styles.ticketCode}>{lastTicket.ticketCode}</ThemedText>
             <ThemedText style={styles.ticketMeta}>Total {lastTicket.totalAmount}</ThemedText>
             <ThemedText style={styles.ticketMeta}>Estado {lastTicket.status}</ThemedText>
             <View style={styles.ticketActions}>
@@ -542,97 +554,147 @@ export default function LoteriaScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f5f5f2' },
-  content: { padding: 14, gap: 12, paddingBottom: 28 },
-  heroCard: { borderRadius: 22, padding: 16, gap: 10, backgroundColor: '#fffdf8', borderWidth: 1, borderColor: '#efe8d8' },
-  heroMetaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
+  safeArea: { flex: 1, backgroundColor: '#eef3f8' },
+  content: { padding: 16, gap: 14, paddingBottom: 28 },
+  heroCard: { borderRadius: 30, padding: 18, gap: 12, backgroundColor: '#fffaf2', borderWidth: 1, borderColor: '#f2e3cf', overflow: 'hidden' },
+  heroGlow: { position: 'absolute', top: -22, right: -14, width: 140, height: 140, borderRadius: 999, backgroundColor: '#d8f5df', opacity: 0.55 },
+  heroMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   heroMetaText: { color: '#0f6b3c', fontWeight: '700' },
-  operatorHint: { color: '#0f6b3c', fontWeight: '700' },
-  operatorWarning: { color: '#b91c1c', fontWeight: '700' },
-  subtle: { color: '#6b7280', lineHeight: 20 },
-  feedbackPill: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12 },
+  operatorHint: { color: '#4b5563', fontSize: 13, lineHeight: 18 },
+  operatorWarning: { color: '#b91c1c', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  heroStatusChip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
+  heroStatusDot: { width: 8, height: 8, borderRadius: 999 },
+  heroStatusDotOn: { backgroundColor: '#22c55e' },
+  heroStatusDotOff: { backgroundColor: '#ef4444' },
+  heroStatusText: { color: '#4b5563', fontSize: 13, lineHeight: 18 },
+  heroDeadline: { color: '#0f6b3c', fontWeight: '700' },
+  feedbackPill: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12 },
   feedbackPillError: { backgroundColor: '#fff1f2', borderWidth: 1, borderColor: '#fecdd3' },
   feedbackPillSuccess: { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#a7f3d0' },
   feedbackPillErrorText: { color: '#be123c' },
   feedbackPillSuccessText: { color: '#166534' },
   warningCard: { borderRadius: 18, padding: 14, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74', gap: 6 },
-  warningTitle: { color: '#c2410c' },
-  warningText: { color: '#9a3412', lineHeight: 21 },
-  surfaceCard: { borderRadius: 22, padding: 16, gap: 12, backgroundColor: '#ffffff' },
+  warningTitle: { color: '#c2410c', fontSize: 18, lineHeight: 22, fontWeight: '800' },
+  warningText: { color: '#9a3412', lineHeight: 18 },
+  sectionCard: { borderRadius: 26, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
+  surfaceCard: { borderRadius: 26, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 },
+  sectionEyebrow: { color: '#b45309', fontSize: 11, lineHeight: 14, letterSpacing: 1.6, fontWeight: '800' },
+  sectionTitle: { color: '#17212b', fontSize: 22, lineHeight: 26, fontWeight: '800' },
+  sectionSubheading: { color: '#17212b', fontSize: 18, lineHeight: 22, fontWeight: '800' },
+  sectionNote: { color: '#7c8795', fontSize: 12, lineHeight: 16 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   selectorChip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f3efe4' },
   selectorChipActive: { backgroundColor: '#0f6b3c' },
-  selectorChipText: { color: '#5b6470' },
+  selectorChipText: { color: '#59616d' },
   selectorChipTextActive: { color: '#ffffff' },
+  drawGrid: { gap: 10 },
   drawList: { gap: 10 },
-  drawRow: { borderRadius: 16, padding: 14, backgroundColor: '#f8f8f6', borderWidth: 1, borderColor: '#ece7db', gap: 4 },
-  drawRowActive: { backgroundColor: '#eef9f1', borderColor: '#b8e3c4' },
-  drawMeta: { color: '#111827' },
+  drawCard: { borderRadius: 18, padding: 14, gap: 4, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
+  drawCardActive: { backgroundColor: '#eefcf3', borderColor: '#b7e4c7' },
+  drawRow: { borderRadius: 18, padding: 14, gap: 4, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
+  drawRowActive: { backgroundColor: '#eefcf3', borderColor: '#b7e4c7' },
+  drawTitle: { color: '#17212b', fontSize: 17, lineHeight: 21, fontWeight: '800' },
+  drawTime: { color: '#475569' },
+  drawMeta: { color: '#475569' },
   drawHint: { color: '#0f6b3c' },
-  cashierCard: { borderRadius: 24, padding: 16, gap: 14, backgroundColor: '#ffffff' },
-  brandBar: { borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#0f6b3c', gap: 2 },
-  brandBarText: { color: '#ffffff' },
+  salesCard: { borderRadius: 28, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
+  cashierCard: { borderRadius: 28, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
+  salesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  salesTitle: { color: '#17212b', fontSize: 24, lineHeight: 28, fontWeight: '800' },
+  salesSubtitle: { color: '#6b7280' },
+  salesTotalChip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fef3c7' },
+  salesTotalChipText: { color: '#92400e', fontWeight: '700' },
+  brandBar: { borderRadius: 22, padding: 16, gap: 4, backgroundColor: '#0f6b3c' },
+  brandBarText: { color: '#ffffff', fontSize: 24, lineHeight: 28, fontWeight: '800' },
   brandBarMeta: { color: '#dcfce7' },
+  customerGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  customerInputWide: { flex: 1, minWidth: 150 },
   inlineMetaRow: { flexDirection: 'row', gap: 10 },
-  metaInput: { borderRadius: 14, minHeight: 48, paddingHorizontal: 14, backgroundColor: '#faf8f2', borderWidth: 1, borderColor: '#ece7db', color: '#111827' },
+  metaInput: { minHeight: 52, borderRadius: 18, paddingHorizontal: 15, backgroundColor: '#f8fbff', borderWidth: 1, borderColor: '#d9e5f2', color: '#17212b', fontSize: 15 },
   metaInputHalf: { flex: 1 },
-  topFieldRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-end' },
-  fieldBlock: { gap: 6 },
+  input: { minHeight: 52, borderRadius: 18, paddingHorizontal: 15, backgroundColor: '#f8fbff', borderWidth: 1, borderColor: '#d9e5f2', color: '#17212b', fontSize: 15 },
+  captureGrid: { gap: 10 },
+  captureMain: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
+  topFieldRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
+  fieldBlock: { gap: 8 },
   fieldGrow: { flex: 1 },
-  reventadoField: { width: 128 },
-  fieldLabel: { color: '#6b7280', fontWeight: '700' },
-  largeInput: { borderRadius: 16, minHeight: 58, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7d2c6', color: '#111827', fontSize: 22, fontWeight: '800' },
-  mediumInput: { borderRadius: 16, minHeight: 52, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7d2c6', color: '#111827', fontSize: 18, fontWeight: '800' },
-  multiPlayToggle: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#dbe3ea' },
+  fieldCard: { flex: 1, borderRadius: 20, padding: 14, gap: 8, backgroundColor: '#fbfcfe', borderWidth: 1, borderColor: '#e5edf6' },
+  fieldCardCompact: { width: 132, borderRadius: 20, padding: 14, gap: 8, backgroundColor: '#fbfcfe', borderWidth: 1, borderColor: '#e5edf6' },
+  reventadoField: { width: 132 },
+  fieldLabel: { color: '#7b8794' },
+  largeInput: { minHeight: 60, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 26, fontWeight: '800' },
+  mediumInput: { minHeight: 56, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 20, fontWeight: '800' },
+  amountInput: { minHeight: 60, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 26, fontWeight: '800' },
+  compactAmountInput: { minHeight: 56, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 20, fontWeight: '800' },
+  numberDisplay: { minHeight: 64, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 32, fontWeight: '800', letterSpacing: 4 },
+  blockedText: { color: '#b91c1c' },
+  multiPlayCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#dbe3ea' },
+  multiPlayCardActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
+  multiPlayToggle: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#dbe3ea' },
   multiPlayToggleActive: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
-  multiPlayCheckbox: { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
-  multiPlayCheckboxActive: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-  multiPlayCheckboxText: { color: 'transparent', fontWeight: '900' },
-  multiPlayCheckboxTextActive: { color: '#ffffff', fontWeight: '900' },
+  multiPlayCheckbox: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb' },
+  multiPlayCheckboxActive: { backgroundColor: '#dc2626' },
+  multiPlayCheckboxText: { color: '#6b7280', fontWeight: '800' },
+  multiPlayCheckboxTextActive: { color: '#ffffff', fontWeight: '800' },
   multiPlayTextWrap: { flex: 1, gap: 2 },
-  multiPlayTitle: { color: '#111827', fontWeight: '800' },
+  multiPlayIndicator: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb' },
+  multiPlayIndicatorActive: { backgroundColor: '#dc2626' },
+  multiPlayIndicatorText: { color: '#6b7280', fontWeight: '800' },
+  multiPlayIndicatorTextActive: { color: '#ffffff', fontWeight: '800' },
+  multiPlayTitle: { color: '#17212b', fontSize: 16, lineHeight: 20, fontWeight: '800' },
   multiPlayHint: { color: '#64748b', lineHeight: 18 },
   quickAmountRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   quickAmountChip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff1f2' },
   quickAmountChipActive: { backgroundColor: '#dc2626' },
   quickAmountChipText: { color: '#b91c1c' },
   quickAmountChipTextActive: { color: '#ffffff' },
-  keypadGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  keypadButton: { width: '31%', minWidth: 82, borderRadius: 16, paddingVertical: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#efefeb' },
+  keypadShell: { borderRadius: 22, padding: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
+  keypadGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
+  keypadButton: { width: '31%', minWidth: 86, borderRadius: 18, paddingVertical: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f3f7' },
   keypadButtonAccent: { backgroundColor: '#fee2e2' },
   keypadButtonNeutral: { backgroundColor: '#e7e5df' },
-  keypadText: { color: '#111827' },
-  keypadTextAccent: { color: '#b91c1c' },
+  keypadText: { color: '#17212b', fontSize: 24, lineHeight: 28, fontWeight: '800' },
+  keypadTextAccent: { color: '#b91c1c', fontSize: 24, lineHeight: 28, fontWeight: '800' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  totalText: { color: '#111827', fontSize: 22, lineHeight: 28 },
+  totalText: { color: '#17212b', fontSize: 20, lineHeight: 24, fontWeight: '800' },
   summaryHint: { color: '#6b7280' },
   entryList: { gap: 8, minHeight: 24 },
-  emptyListText: { color: '#6b7280', lineHeight: 20 },
-  entryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: '#ece7db', paddingBottom: 10 },
-  entryMeta: { color: '#6b7280' },
-  removeButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  removeButtonText: { color: '#ef4444', fontSize: 26, lineHeight: 28 },
+  entryRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 12, backgroundColor: '#fbfdff', borderWidth: 1, borderColor: '#e5edf6' },
+  entryMeta: { color: '#64748b' },
+  entryCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 12, backgroundColor: '#fbfdff', borderWidth: 1, borderColor: '#e5edf6' },
+  entryCodeWrap: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' },
+  entryCode: { color: '#1d4ed8', fontSize: 22, lineHeight: 26, fontWeight: '800' },
+  entryNumber: { color: '#17212b', fontSize: 19, lineHeight: 22, fontWeight: '800' },
+  entryPrimary: { color: '#17212b', fontWeight: '800' },
+  entrySecondary: { color: '#64748b' },
+  emptyEntryCard: { borderRadius: 18, padding: 14, backgroundColor: '#fbfcfe', borderWidth: 1, borderColor: '#e5edf6' },
+  emptyEntryText: { color: '#7c8795', lineHeight: 18 },
+  emptyListText: { color: '#7c8795', lineHeight: 18 },
+  removeButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff1f2' },
+  removeButtonText: { color: '#dc2626', fontSize: 16, lineHeight: 18, fontWeight: '800' },
   paymentPanel: { flexDirection: 'row', gap: 10 },
-  paymentChip: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: 'center', backgroundColor: '#f3efe4' },
-  paymentChipActive: { backgroundColor: '#111827' },
+  paymentChip: { flex: 1, borderRadius: 16, paddingVertical: 12, alignItems: 'center', backgroundColor: '#f3efe4' },
+  paymentChipActive: { backgroundColor: '#17212b' },
   paymentChipText: { color: '#4b5563' },
   paymentChipTextActive: { color: '#ffffff' },
-  proofCard: { borderRadius: 18, padding: 14, backgroundColor: '#faf8f2', gap: 12, borderWidth: 1, borderColor: '#ece7db' },
+  proofCard: { borderRadius: 20, padding: 14, backgroundColor: '#faf8f2', gap: 12, borderWidth: 1, borderColor: '#ece7db' },
   proofHeader: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  proofButton: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#111827' },
+  subtle: { color: '#64748b', lineHeight: 18 },
+  proofButton: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#17212b' },
   proofButtonText: { color: '#ffffff' },
-  proofPreview: { width: '100%', height: 180, borderRadius: 16, backgroundColor: '#e5e7eb' },
-  blockedPanel: { borderRadius: 16, padding: 12, backgroundColor: '#fff7ed', gap: 8 },
-  blockedTitle: { color: '#9a3412', letterSpacing: 1.2 },
+  proofPreview: { width: '100%', height: 190, borderRadius: 16, backgroundColor: '#e5e7eb' },
+  blockedPanel: { borderRadius: 18, padding: 14, backgroundColor: '#fff7ed', gap: 10, borderWidth: 1, borderColor: '#fed7aa' },
+  blockedTitle: { color: '#9a3412', letterSpacing: 1.1 },
   blockedWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   blockedChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#ffffff' },
   blockedChipText: { color: '#c2410c' },
-  confirmButton: { borderRadius: 18, paddingVertical: 16, alignItems: 'center', backgroundColor: '#0f6b3c' },
+  confirmButton: { borderRadius: 20, paddingVertical: 16, alignItems: 'center', backgroundColor: '#0f6b3c' },
   confirmButtonDisabled: { opacity: 0.7 },
-  confirmButtonText: { color: '#ffffff' },
-  ticketCard: { borderRadius: 24, padding: 18, gap: 8, backgroundColor: '#111827' },
+  confirmButtonText: { color: '#ffffff', fontSize: 18, lineHeight: 22, fontWeight: '800' },
+  ticketCard: { borderRadius: 28, padding: 18, gap: 8, backgroundColor: '#17212b' },
   ticketEyebrow: { color: '#cbd5e1', letterSpacing: 1.5 },
-  ticketCode: { color: '#fff', fontSize: 28, lineHeight: 34 },
+  ticketCode: { color: '#ffffff', fontSize: 28, lineHeight: 32, fontWeight: '800' },
   ticketMeta: { color: '#e5e7eb' },
   ticketActions: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 6 },
   ticketActionPrimary: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#2563eb' },
@@ -640,3 +702,4 @@ const styles = StyleSheet.create({
   ticketActionSecondary: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#dbeafe' },
   ticketActionSecondaryText: { color: '#1d4ed8' },
 });
+

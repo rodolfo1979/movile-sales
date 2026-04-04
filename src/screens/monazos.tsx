@@ -204,6 +204,14 @@ export default function MonazosScreen() {
       setError('Agrega al menos una jugada antes de confirmar la venta.');
       return;
     }
+    if (!customerPhone.trim()) {
+      setError('El telefono del cliente es obligatorio para enviar el PIN de pago.');
+      return;
+    }
+    if (customerPhone.replace(/\D/g, '').length < 8) {
+      setError('Ingresa un telefono valido de al menos 8 digitos.');
+      return;
+    }
     if (paymentMethod === 'sinpe' && !selectedProof) {
       setError('Sube la foto del comprobante para continuar.');
       return;
@@ -351,7 +359,7 @@ export default function MonazosScreen() {
                 value={customerPhone}
                 onChangeText={(value) => { clearFeedback(); setCustomerPhone(value.replace(/\D/g, '')); }}
                 keyboardType="number-pad"
-                placeholder="Telefono"
+                placeholder="Telefono del cliente"
                 placeholderTextColor="#94a3b8"
               />
             </View>
@@ -556,3 +564,4 @@ const styles = StyleSheet.create({
   ticketActionSecondary: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#ede9fe' },
   ticketActionSecondaryText: { color: '#6d28d9' },
 });
+
