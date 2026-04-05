@@ -1,4 +1,4 @@
-﻿import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
@@ -240,10 +240,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#eef3fb',
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 12,
-    gap: 14,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+    gap: 10,
   },
   header: {
     flexDirection: 'row',
@@ -268,19 +268,16 @@ const styles = StyleSheet.create({
   refreshText: {
     color: '#374151',
   },
-  threadRow: {
-    gap: 10,
-    paddingRight: 18,
-  },
+  threadRow: { gap: 8, paddingRight: 12 },
   threadChip: {
-    minWidth: 170,
+    minWidth: 146,
     backgroundColor: '#ffffff',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#dbe4f0',
-    gap: 4,
+    gap: 3,
   },
   threadChipActive: {
     backgroundColor: '#c81e1e',
@@ -293,17 +290,18 @@ const styles = StyleSheet.create({
   unreadDot: { alignSelf: 'flex-start', backgroundColor: '#f59e0b', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   unreadText: { color: '#fff7ed' },
   chatCard: {
-    flex: 1,
+    flex: 1.35,
     backgroundColor: '#ffffff',
     borderRadius: 24,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#dbe4f0',
+    minHeight: 360,
   },
   chatTitle: { marginBottom: 12, color: '#111827' },
-  messageScroller: { flex: 1 },
-  messageList: { gap: 12, paddingBottom: 8 },
-  messageBubble: { maxWidth: '84%', padding: 12, borderRadius: 18, gap: 8 },
+  messageScroller: { flex: 1, minHeight: 300 },
+  messageList: { gap: 10, paddingBottom: 10 },
+  messageBubble: { maxWidth: '88%', padding: 13, borderRadius: 20, gap: 8 },
   messageMine: { alignSelf: 'flex-end', backgroundColor: '#c81e1e' },
   messageOther: { alignSelf: 'flex-start', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e5e7eb' },
   messageMetaMine: { color: '#fee2e2' },
@@ -313,13 +311,13 @@ const styles = StyleSheet.create({
   composerCard: {
     backgroundColor: '#ffffff',
     borderRadius: 24,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#dbe4f0',
-    gap: 12,
+    gap: 10,
   },
   input: {
-    minHeight: 92,
+    minHeight: 72,
     borderRadius: 18,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
@@ -343,5 +341,7 @@ const styles = StyleSheet.create({
   errorCard: { backgroundColor: '#fef2f2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#fecaca' },
   errorText: { color: '#991b1b' },
 });
+
+
 
 
