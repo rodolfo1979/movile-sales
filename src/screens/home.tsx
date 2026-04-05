@@ -1,4 +1,4 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,6 +38,7 @@ function todayIsoDate() {
 
 export default function HomeScreen() {
   const router = useMobileNav();
+  const pathname = router.pathname;
   const {
     tenantSlug,
     tenantLabel,
@@ -62,6 +63,68 @@ export default function HomeScreen() {
   const [email, setEmail] = React.useState(authUser?.email || '');
   const [password, setPassword] = React.useState('');
 
+  const loadHomeData = React.useCallback(async (showSpinner = true) => {
+    const currentTenant = tenantSlug.trim();
+    if (!currentTenant) {
+      setLotteries([]);
+      setMonazosGames([]);
+      setRemoteSales([]);
+      setSellerBalance(null);
+      setError('');
+      if (showSpinner) {
+        setLoading(false);
+      }
+      return;
+    }
+
+    try {
+      if (showSpinner) {
+        setLoading(true);
+      }
+      setError('');
+
+      const [lotteryData, monazosData] = await Promise.all([
+        fetchLotteries(currentTenant),
+        fetchMonazosGames(currentTenant),
+      ]);
+
+      setLotteries(lotteryData || []);
+      setMonazosGames(monazosData || []);
+
+      if (accessToken && authUser?.email) {
+        const [lotterySales, monazosSales, balanceRows] = await Promise.all([
+          fetchMyLotterySales(accessToken),
+          fetchMyMonazosSales(accessToken),
+          fetchMySellerBalanceSummary(accessToken, {
+            date: todayIsoDate(),
+            sellerEmail: authUser.email,
+          }),
+        ]);
+
+        const combinedSales = [...(lotterySales || []), ...(monazosSales || [])].sort((left, right) => {
+          const leftTime = new Date(left.drawDate || 0).getTime();
+          const rightTime = new Date(right.drawDate || 0).getTime();
+          return rightTime - leftTime;
+        });
+
+        setRemoteSales(combinedSales);
+        const normalizedEmail = authUser.email.trim().toLowerCase();
+        const balanceItem = (balanceRows || []).find((item) => item.sellerEmail.trim().toLowerCase() === normalizedEmail) || null;
+        setSellerBalance(balanceItem);
+      } else {
+        setRemoteSales([]);
+        setSellerBalance(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el inicio.');
+    } finally {
+      if (showSpinner) {
+        setLoading(false);
+      }
+    }
+  }, [tenantSlug, accessToken, authUser?.email]);
+
+
   React.useEffect(() => {
     setTenantDraft(tenantSlug);
   }, [tenantSlug]);
@@ -71,41 +134,17 @@ export default function HomeScreen() {
   }, [authUser?.email]);
 
   React.useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        setLoading(true);
-        setError('');
-        const requests: Promise<any>[] = [fetchLotteries(tenantSlug), fetchMonazosGames(tenantSlug)];
-        if (authUser?.email && accessToken) {
-          requests.push(
-            fetchMyLotterySales(accessToken),
-            fetchMyMonazosSales(accessToken),
-            fetchMySellerBalanceSummary(accessToken, { date: todayIsoDate(), sellerEmail: authUser.email }),
-          );
-        }
-        const [lotteriesData, monazosData, myLotterySales = [], myMonazosSales = [], sellerBalanceSummary = []] = await Promise.all(requests);
-        if (cancelled) return;
-        setLotteries(lotteriesData);
-        setMonazosGames(monazosData);
-        setRemoteSales([...(myLotterySales as SellerSale[]), ...(myMonazosSales as SellerSale[])]);
-        setSellerBalance((sellerBalanceSummary as SellerBalanceSummaryItem[])[0] || null);
-      } catch (err) {
-        if (cancelled) return;
-        setLotteries([]);
-        setMonazosGames([]);
-        setRemoteSales([]);
-        setSellerBalance(null);
-        setError(err instanceof Error ? err.message : 'No se pudo cargar la app.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantSlug, authUser?.email, accessToken]);
+    void loadHomeData();
+  }, [loadHomeData]);
+
+  React.useEffect(() => {
+    if (pathname !== '/' || !authUser?.email || !accessToken) return;
+    void loadHomeData(false);
+    const interval = setInterval(() => {
+      void loadHomeData(false);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [pathname, authUser?.email, accessToken, loadHomeData]);
 
   const sellerRecentSales = React.useMemo<HomeSale[]>(() => {
     const localSales: HomeSale[] = !authUser?.email
@@ -304,7 +343,7 @@ export default function HomeScreen() {
                 <View style={styles.sessionAvatar}><ThemedText type="small" style={styles.sessionAvatarText}>VD</ThemedText></View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <ThemedText style={styles.sessionPrimary}>{authUser.email}</ThemedText>
-                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} · Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
+                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} � Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
                 </View>
               </View>
               <Pressable style={styles.ghostButton} onPress={() => void handleLogout()}>
@@ -859,6 +898,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+
 
 
 
