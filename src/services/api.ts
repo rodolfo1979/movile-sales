@@ -1,4 +1,4 @@
-import { DEFAULT_TENANT_SLUG, getApiBase } from '../constants/config';
+﻿import { DEFAULT_TENANT_SLUG, getApiBase } from '../constants/config';
 
 export type Draw = {
   id: string;
@@ -256,6 +256,14 @@ function buildAuthHeaders(token: string) {
 
 function buildTenantQuery(tenantSlug = DEFAULT_TENANT_SLUG) {
   return '?tenantSlug=' + encodeURIComponent(tenantSlug);
+}
+
+export function buildInternalAttachmentAccessUrl(downloadPath: string, token: string) {
+  const query = new URLSearchParams({ token });
+  if (currentDeviceId) {
+    query.set('deviceId', currentDeviceId);
+  }
+  return getApiBase().replace(/\/api$/, '') + downloadPath + '?' + query.toString();
 }
 
 async function readEnvelope<T>(path: string) {
@@ -624,5 +632,6 @@ export async function sendInternalMessage(
   });
   return await postFormEnvelopeWithAuth<InternalMessageItem>('/internal-messages', token, formData);
 }
+
 
 

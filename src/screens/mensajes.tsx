@@ -1,5 +1,6 @@
-import * as ImagePicker from 'expo-image-picker';
+﻿import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
+import { openBrowserAsync } from 'expo-web-browser';
 import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '../components/themed-text';
@@ -11,6 +12,8 @@ import {
   fetchInternalMessageThreads,
   markInternalMessageThreadRead,
   sendInternalMessage,
+  buildInternalAttachmentAccessUrl,
+  type InternalMessageAttachment,
   type InternalMessageContact,
   type InternalMessageItem,
   type InternalMessageThread,
@@ -109,6 +112,18 @@ export default function MensajesScreen() {
       fileName: asset.fileName || `imagen-${Date.now()}-${index + 1}.jpg`,
       mimeType: asset.mimeType || 'image/jpeg',
     })));
+  }
+
+  async function openAttachment(attachment: InternalMessageAttachment) {
+    if (!accessToken) {
+      setError('Inicia sesion otra vez para abrir el adjunto.');
+      return;
+    }
+    try {
+      await openBrowserAsync(buildInternalAttachmentAccessUrl(attachment.downloadPath, accessToken));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo abrir el adjunto de Artemis.');
+    }
   }
 
   async function handleSend() {
@@ -211,9 +226,9 @@ export default function MensajesScreen() {
                 {message.attachments?.length ? (
                   <View style={styles.attachmentList}>
                     {message.attachments.map((attachment) => (
-                      <View key={attachment.id} style={styles.attachmentBadge}>
+                      <Pressable key={attachment.id} style={styles.attachmentBadge} onPress={() => void openAttachment(attachment)}>
                         <ThemedText type="small" style={styles.attachmentText}>{attachment.kind === 'image' ? 'Imagen' : 'Archivo'}: {attachment.originalName}</ThemedText>
-                      </View>
+                      </Pressable>
                     ))}
                   </View>
                 ) : null}
@@ -372,6 +387,7 @@ const styles = StyleSheet.create({
   errorCard: { backgroundColor: '#fef2f2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#fecaca' },
   errorText: { color: '#991b1b' },
 });
+
 
 
 
