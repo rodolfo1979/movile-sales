@@ -240,10 +240,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#eef3fb',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 8,
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    gap: 8,
   },
   header: {
     flexDirection: 'row',
@@ -296,11 +296,11 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: '#dbe4f0',
-    minHeight: 360,
+    minHeight: 430,
   },
-  chatTitle: { marginBottom: 12, color: '#111827' },
-  messageScroller: { flex: 1, minHeight: 300 },
-  messageList: { gap: 10, paddingBottom: 10 },
+  chatTitle: { marginBottom: 8, color: '#111827' },
+  messageScroller: { flex: 1, minHeight: 370 },
+  messageList: { gap: 8, paddingBottom: 10 },
   messageBubble: { maxWidth: '88%', padding: 13, borderRadius: 20, gap: 8 },
   messageMine: { alignSelf: 'flex-end', backgroundColor: '#c81e1e' },
   messageOther: { alignSelf: 'flex-start', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e5e7eb' },
@@ -314,10 +314,10 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: '#dbe4f0',
-    gap: 10,
+    gap: 8,
   },
   input: {
-    minHeight: 72,
+    minHeight: 54,
     borderRadius: 18,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
@@ -341,6 +341,7 @@ const styles = StyleSheet.create({
   errorCard: { backgroundColor: '#fef2f2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#fecaca' },
   errorText: { color: '#991b1b' },
 });
+
 
 
 
