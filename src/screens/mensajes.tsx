@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
@@ -154,7 +154,12 @@ export default function MensajesScreen() {
   }
 
   return (
-    <ThemedView style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.keyboardShell}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+    >
+      <ThemedView style={styles.screen}>
       <View style={styles.header}>
         <View>
           <ThemedText type="small" style={styles.eyebrow}>ARTEMIS | MENSAJERIA</ThemedText>
@@ -167,7 +172,7 @@ export default function MensajesScreen() {
 
       {error ? <View style={styles.errorCard}><ThemedText style={styles.errorText}>{error}</ThemedText></View> : null}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.threadRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.threadRow} keyboardShouldPersistTaps="handled">
         {(threads.length ? threads : contacts.map((contact) => ({ counterpartEmail: contact.email, counterpartRole: contact.role, counterpartStatus: contact.status, counterpartPhone: contact.phone, unreadCount: 0, lastMessage: { id: contact.id, senderRole: contact.role, senderEmail: contact.email, recipientRole: authUser.role, recipientEmail: authUser.email, body: 'Sin mensajes todavia.', type: 'system', status: 'read', createdAt: new Date().toISOString(), attachments: [] } as InternalMessageItem }))).map((threadItem) => {
           const active = effectiveRecipient === threadItem.counterpartEmail;
           return (
@@ -182,7 +187,7 @@ export default function MensajesScreen() {
 
       <View style={styles.chatCard}>
         <ThemedText type="subtitle" style={styles.chatTitle}>{thread?.counterpart?.email || effectiveRecipient || 'Sin destinatario'}</ThemedText>
-        <ScrollView contentContainerStyle={styles.messageList} style={styles.messageScroller}>
+        <ScrollView contentContainerStyle={styles.messageList} style={styles.messageScroller} keyboardShouldPersistTaps="handled">
           {thread?.messages?.length ? thread.messages.map((message) => {
             const mine = message.senderEmail === authUser.email;
             return (
@@ -232,11 +237,16 @@ export default function MensajesScreen() {
           </Pressable>
         </View>
       </View>
-    </ThemedView>
+      </ThemedView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardShell: {
+    flex: 1,
+    backgroundColor: '#eef3fb',
+  },
   screen: {
     flex: 1,
     backgroundColor: '#eef3fb',
