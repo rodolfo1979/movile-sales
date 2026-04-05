@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
@@ -12,12 +12,13 @@ const tabs: Array<{ href: MobileRoute; label: string; short: string; protected?:
   { href: '/monazos', label: '3 Monazos', short: '3M', protected: true },
   { href: '/tickets', label: 'Tickets', short: 'TK', protected: true },
   { href: '/premios', label: 'Premios', short: 'PR', protected: true },
+  { href: '/mensajes', label: 'Artemis', short: 'AR', protected: true },
   { href: '/ganancias', label: 'Ganancias', short: 'GN', protected: true },
 ];
 
 export default function AppTabs() {
   const { pathname, replace } = useMobileNav();
-  const { authUser } = useAppSession();
+  const { authUser, unreadInternalMessages } = useAppSession();
   const visibleTabs = React.useMemo(
     () => tabs.filter((tab) => tab.href !== '/ganancias' || authUser?.salesCommissionEnabled),
     [authUser?.salesCommissionEnabled],
@@ -37,10 +38,18 @@ export default function AppTabs() {
       {visibleTabs.map((tab) => {
         const active = pathname === tab.href;
         const locked = tab.protected && !authUser;
+        const unread = tab.href === '/mensajes' ? unreadInternalMessages : 0;
         return (
           <Pressable key={String(tab.href)} onPress={() => handleTabPress(tab)} style={[styles.tab, active && styles.tabActive, locked && styles.tabLocked]}>
-            <View style={[styles.iconWrap, active && styles.iconWrapActive, locked && styles.iconWrapLocked]}>
-              <ThemedText type="small" style={active ? styles.iconTextActive : locked ? styles.iconTextLocked : styles.iconText}>{tab.short}</ThemedText>
+            <View style={styles.iconStack}>
+              <View style={[styles.iconWrap, active && styles.iconWrapActive, locked && styles.iconWrapLocked]}>
+                <ThemedText type="small" style={active ? styles.iconTextActive : locked ? styles.iconTextLocked : styles.iconText}>{tab.short}</ThemedText>
+              </View>
+              {unread ? (
+                <View style={styles.badge}>
+                  <ThemedText type="small" style={styles.badgeText}>{unread > 9 ? '9+' : String(unread)}</ThemedText>
+                </View>
+              ) : null}
             </View>
             <ThemedText type="small" style={active ? styles.labelActive : locked ? styles.labelLocked : styles.label}>{tab.label}</ThemedText>
           </Pressable>
@@ -76,6 +85,9 @@ const styles = StyleSheet.create({
   tabLocked: {
     opacity: 0.55,
   },
+  iconStack: {
+    position: 'relative',
+  },
   iconWrap: {
     width: 34,
     height: 34,
@@ -89,6 +101,25 @@ const styles = StyleSheet.create({
   },
   iconWrapLocked: {
     backgroundColor: '#ece3d6',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -7,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#7c3aed',
+    borderWidth: 2,
+    borderColor: '#fffaf1',
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    lineHeight: 12,
   },
   iconText: {
     color: '#7c6855',
@@ -112,4 +143,3 @@ const styles = StyleSheet.create({
     color: '#a39689',
   },
 });
-

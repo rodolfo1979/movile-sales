@@ -194,6 +194,49 @@ export type MobileMonazosPrizeClaim = {
 };
 
 export type MobilePrizeClaim = MobileLotteryPrizeClaim | MobileMonazosPrizeClaim;
+export type InternalMessageAttachment = {
+  id: string;
+  kind: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  downloadPath: string;
+};
+export type InternalMessageItem = {
+  id: string;
+  senderId?: string | null;
+  senderRole: string;
+  senderEmail: string;
+  recipientId?: string | null;
+  recipientRole: string;
+  recipientEmail: string;
+  body: string;
+  type: 'manual' | 'system';
+  status: 'sent' | 'read';
+  createdAt: string;
+  readAt?: string | null;
+  attachments: InternalMessageAttachment[];
+};
+export type InternalMessageThread = {
+  counterpartEmail: string;
+  counterpartRole: string;
+  counterpartStatus: string;
+  counterpartPhone?: string | null;
+  unreadCount: number;
+  lastMessage: InternalMessageItem;
+};
+export type InternalMessageContact = {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  phone?: string | null;
+};
+export type InternalMessageThreadPayload = {
+  counterpart: InternalMessageContact;
+  messages: InternalMessageItem[];
+};
 type ApiEnvelope<T> = { data: T; message?: string | string[] };
 
 let currentDeviceId = '';
@@ -243,6 +286,20 @@ async function postEnvelopeWithAuth<T>(path: string, token: string, body: unknow
     method: 'POST',
     headers: { ...buildAuthHeaders(token), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  });
+  const payload = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok) {
+    const message = Array.isArray(payload.message) ? payload.message.join('. ') : payload.message || 'No se pudo completar la solicitud.';
+    throw new Error(message);
+  }
+  return payload.data;
+}
+
+async function postFormEnvelopeWithAuth<T>(path: string, token: string, formData: FormData) {
+  const response = await fetch(getApiBase() + path, {
+    method: 'POST',
+    headers: buildAuthHeaders(token),
+    body: formData,
   });
   const payload = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok) {
@@ -530,5 +587,42 @@ export async function sendSellerLocationOffline(token: string) {
 
 
 
+
+
+
+export async function fetchInternalMessageContacts(token: string) {
+  return await readEnvelopeWithAuth<InternalMessageContact[]>('/internal-messages/contacts', token);
+}
+
+export async function fetchInternalMessageThreads(token: string) {
+  return await readEnvelopeWithAuth<InternalMessageThread[]>('/internal-messages/threads', token);
+}
+
+export async function fetchInternalMessageThread(withEmail: string, token: string) {
+  return await readEnvelopeWithAuth<InternalMessageThreadPayload>('/internal-messages/thread?withEmail=' + encodeURIComponent(withEmail), token);
+}
+
+export async function markInternalMessageThreadRead(withEmail: string, token: string) {
+  return await postEnvelopeWithAuth<{ updatedCount: number }>('/internal-messages/read-thread', token, { withEmail });
+}
+
+export async function sendInternalMessage(
+  payload: { recipientEmail: string; body?: string; attachments?: UploadableProof[] },
+  token: string,
+) {
+  const formData = new FormData();
+  formData.append('recipientEmail', payload.recipientEmail.trim().toLowerCase());
+  if (payload.body?.trim()) {
+    formData.append('body', payload.body.trim());
+  }
+  (payload.attachments || []).forEach((file, index) => {
+    formData.append('files', {
+      uri: file.uri,
+      name: file.fileName || `adjunto-${index + 1}.jpg`,
+      type: file.mimeType || 'image/jpeg',
+    } as never);
+  });
+  return await postFormEnvelopeWithAuth<InternalMessageItem>('/internal-messages', token, formData);
+}
 
 

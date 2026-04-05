@@ -1,10 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Location from 'expo-location';
 import * as React from 'react';
+import { Alert } from 'react-native';
 
 import { DEFAULT_TENANT_SLUG } from '../constants/config';
-import { configureDeviceIdentity, loginAdmin, sendSellerLocationOffline, sendSellerLocationPing, startSellerConnectionSession, type AuthUser, type LoginResponse } from '../services/api';
+import { configureDeviceIdentity, fetchInternalMessageThreads, loginAdmin, sendSellerLocationOffline, sendSellerLocationPing, startSellerConnectionSession, type AuthUser, type LoginResponse } from '../services/api';
 
 type RecentSale = {
   ticketCode: string;
@@ -37,6 +38,7 @@ type AppSessionContextValue = {
   locationError: string;
   lastLocationAt: string | null;
   printerConfig: PrinterConfig | null;
+  unreadInternalMessages: number;
   setTenantSlug: (value: string) => Promise<void>;
   addRecentSale: (sale: RecentSale) => Promise<void>;
   login: (payload: { email: string; password: string; tenantSlug?: string }) => Promise<LoginResponse>;
@@ -91,9 +93,11 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   const [locationError, setLocationError] = React.useState('');
   const [lastLocationAt, setLastLocationAt] = React.useState<string | null>(null);
   const [printerConfig, setPrinterConfig] = React.useState<PrinterConfig | null>(null);
+  const [unreadInternalMessages, setUnreadInternalMessages] = React.useState(0);
   const locationWatchRef = React.useRef<Location.LocationSubscription | null>(null);
   const deviceIdRef = React.useRef('');
   const deviceLabelRef = React.useRef('');
+  const previousUnreadMessagesRef = React.useRef(0);
 
   React.useEffect(() => {
     let mounted = true;
@@ -223,6 +227,44 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
       }
     };
   }, [authUser?.id, accessToken, locationEnabled]);
+  React.useEffect(() => {
+    if (!authUser || !accessToken) {
+      setUnreadInternalMessages(0);
+      previousUnreadMessagesRef.current = 0;
+      return;
+    }
+
+    const token = accessToken;
+    let cancelled = false;
+
+    async function refreshUnread(silent = true) {
+      try {
+        const threads = await fetchInternalMessageThreads(token);
+        if (cancelled) return;
+        const nextUnread = threads.reduce((sum, thread) => sum + (thread.unreadCount || 0), 0);
+        const previousUnread = previousUnreadMessagesRef.current;
+        setUnreadInternalMessages(nextUnread);
+        if (!silent && nextUnread > previousUnread) {
+          Alert.alert('Artemis', `Tienes ${nextUnread - previousUnread} mensaje(s) nuevo(s).`);
+        }
+        previousUnreadMessagesRef.current = nextUnread;
+      } catch {
+        if (!cancelled) {
+          setUnreadInternalMessages((current) => current);
+        }
+      }
+    }
+
+    void refreshUnread(true);
+    const interval = setInterval(() => {
+      void refreshUnread(false);
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [authUser?.id, accessToken]);
 
   async function persistTenantSlug(value: string) {
     const normalized = value.trim() || DEFAULT_TENANT_SLUG;
@@ -336,13 +378,14 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
     locationError,
     lastLocationAt,
     printerConfig,
+    unreadInternalMessages,
     setTenantSlug: persistTenantSlug,
     addRecentSale,
     login,
     logout,
     savePrinterConfig,
     clearPrinterConfig,
-  }), [ready, tenantSlug, tenantLabel, tenantInitials, recentSales, authUser, accessToken, locationEnabled, locationError, lastLocationAt, printerConfig]);
+  }), [ready, tenantSlug, tenantLabel, tenantInitials, recentSales, authUser, accessToken, locationEnabled, locationError, lastLocationAt, printerConfig, unreadInternalMessages]);
 
   return <AppSessionContext.Provider value={value}>{children}</AppSessionContext.Provider>;
 }
@@ -354,3 +397,10 @@ export function useAppSession() {
 }
 
 export type { RecentSale };
+
+
+
+
+
+
+
