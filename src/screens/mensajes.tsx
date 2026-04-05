@@ -1,4 +1,5 @@
-﻿import * as ImagePicker from 'expo-image-picker';
+﻿import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
 import { openBrowserAsync } from 'expo-web-browser';
 import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -114,6 +115,32 @@ export default function MensajesScreen() {
     })));
   }
 
+  async function handlePickFile() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/pdf',
+          'text/plain',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'image/*',
+        ],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      setAttachments(result.assets.map((asset, index) => ({
+        uri: asset.uri,
+        fileName: asset.name || ('archivo-' + Date.now() + '-' + (index + 1)),
+        mimeType: asset.mimeType || 'application/octet-stream',
+      })));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo seleccionar el archivo.');
+    }
+  }
+
   async function openAttachment(attachment: InternalMessageAttachment) {
     if (!accessToken) {
       setError('Inicia sesion otra vez para abrir el adjunto.');
@@ -132,7 +159,7 @@ export default function MensajesScreen() {
       return;
     }
     if (!body.trim() && attachments.length === 0) {
-      setError('Escribe un mensaje o adjunta al menos una imagen en Artemis.');
+      setError('Escribe un mensaje o adjunta al menos una imagen o archivo en Artemis.');
       return;
     }
 
@@ -373,10 +400,10 @@ const styles = StyleSheet.create({
     color: '#111827',
     textAlignVertical: 'top',
   },
-  actionsRow: { flexDirection: 'row', gap: 10 },
-  primaryButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 18, backgroundColor: '#c81e1e' },
+  actionsRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  primaryButton: { flex: 1, minWidth: 120, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 18, backgroundColor: '#c81e1e' },
   primaryButtonText: { color: '#fff7ed' },
-  secondaryButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 18, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
+  secondaryButton: { flex: 1, minWidth: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 18, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
   secondaryButtonText: { color: '#374151' },
   disabledButton: { opacity: 0.6 },
   attachmentList: { gap: 8 },
