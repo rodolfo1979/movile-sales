@@ -1,4 +1,4 @@
-﻿import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as React from 'react';
 import { StyleSheet, View, useColorScheme } from 'react-native';
 
@@ -7,6 +7,7 @@ import LoteriaScreen from './screens/loteria';
 import MonazosScreen from './screens/monazos';
 import TicketsScreen from './screens/tickets';
 import PremiosScreen from './screens/premios';
+import MensajesScreen from './screens/mensajes';
 import GananciasScreen from './screens/ganancias';
 import PrinterScreen from './screens/printer';
 import AppTabs from './components/app-tabs';
@@ -38,6 +39,8 @@ function ActiveScreen() {
       return <TicketsScreen />;
     case '/premios':
       return <PremiosScreen />;
+    case '/mensajes':
+      return <MensajesScreen />;
     case '/ganancias':
       return <GananciasScreen />;
     case '/printer':
@@ -82,6 +85,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
 
 
 
