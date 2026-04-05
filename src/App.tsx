@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as React from 'react';
-import { StyleSheet, View, useColorScheme } from 'react-native';
+import { Keyboard, StyleSheet, View, useColorScheme } from 'react-native';
 
 import HomeScreen from './screens/home';
 import LoteriaScreen from './screens/loteria';
@@ -52,12 +52,26 @@ function ActiveScreen() {
 }
 
 function AppShell() {
+  const { pathname } = useMobileNav();
+  const [keyboardVisible, setKeyboardVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const showEvent = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideEvent = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showEvent.remove();
+      hideEvent.remove();
+    };
+  }, []);
+
+  const hideTabs = pathname === '/mensajes' && keyboardVisible;
+
   return (
     <View style={styles.frame}>
       <View style={styles.content}>
         <ActiveScreen />
       </View>
-      <AppTabs />
+      {!hideTabs ? <AppTabs /> : null}
     </View>
   );
 }

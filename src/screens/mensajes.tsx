@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
@@ -28,6 +28,7 @@ export default function MensajesScreen() {
   const [attachments, setAttachments] = React.useState<UploadableProof[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
 
   const effectiveRecipient = activeEmail || contacts[0]?.email || '';
 
@@ -76,6 +77,19 @@ export default function MensajesScreen() {
       setError(reason instanceof Error ? reason.message : 'No se pudo cargar la conversacion de Artemis.');
     });
   }, [effectiveRecipient, loadThread]);
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (event) => {
+      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   async function handlePickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -156,10 +170,10 @@ export default function MensajesScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardShell}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
-      <ThemedView style={styles.screen}>
+      <ThemedView style={[styles.screen, keyboardHeight > 0 && styles.screenKeyboardOpen]}>
       <View style={styles.header}>
         <View>
           <ThemedText type="small" style={styles.eyebrow}>ARTEMIS | MENSAJERIA</ThemedText>
@@ -185,9 +199,9 @@ export default function MensajesScreen() {
         })}
       </ScrollView>
 
-      <View style={styles.chatCard}>
+      <View style={[styles.chatCard, keyboardHeight > 0 && styles.chatCardKeyboardOpen]}>
         <ThemedText type="subtitle" style={styles.chatTitle}>{thread?.counterpart?.email || effectiveRecipient || 'Sin destinatario'}</ThemedText>
-        <ScrollView contentContainerStyle={styles.messageList} style={styles.messageScroller} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.messageList, keyboardHeight > 0 && styles.messageListKeyboardOpen]} style={styles.messageScroller} keyboardShouldPersistTaps="handled">
           {thread?.messages?.length ? thread.messages.map((message) => {
             const mine = message.senderEmail === authUser.email;
             return (
@@ -210,7 +224,7 @@ export default function MensajesScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.composerCard}>
+      <View style={[styles.composerCard, keyboardHeight > 0 && { marginBottom: Math.max(8, keyboardHeight - 24) }]}>
         <TextInput
           value={body}
           onChangeText={setBody}
@@ -252,8 +266,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef3fb',
     paddingHorizontal: 12,
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 8,
     gap: 8,
+  },
+  screenKeyboardOpen: {
+    paddingBottom: 0,
   },
   header: {
     flexDirection: 'row',
@@ -308,9 +325,13 @@ const styles = StyleSheet.create({
     borderColor: '#dbe4f0',
     minHeight: 430,
   },
+  chatCardKeyboardOpen: {
+    minHeight: 320,
+  },
   chatTitle: { marginBottom: 8, color: '#111827' },
   messageScroller: { flex: 1, minHeight: 370 },
   messageList: { gap: 8, paddingBottom: 10 },
+  messageListKeyboardOpen: { paddingBottom: 24 },
   messageBubble: { maxWidth: '88%', padding: 13, borderRadius: 20, gap: 8 },
   messageMine: { alignSelf: 'flex-end', backgroundColor: '#c81e1e' },
   messageOther: { alignSelf: 'flex-start', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e5e7eb' },
