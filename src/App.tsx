@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+﻿import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as React from 'react';
 import { StyleSheet, View, useColorScheme } from 'react-native';
 
@@ -82,5 +82,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
 
 
