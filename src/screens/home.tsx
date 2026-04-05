@@ -96,7 +96,6 @@ export default function HomeScreen() {
           fetchMyLotterySales(accessToken),
           fetchMyMonazosSales(accessToken),
           fetchMySellerBalanceSummary(accessToken, {
-            date: todayIsoDate(),
             sellerEmail: authUser.email,
           }),
         ]);
@@ -898,6 +897,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
 
 
 
