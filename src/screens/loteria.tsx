@@ -234,12 +234,8 @@ function removeEntry(entryId: string) {
       setError('Agrega al menos una jugada antes de confirmar la venta.');
       return;
     }
-    if (!customerPhone.trim()) {
-      setError('El telefono del cliente es obligatorio para enviar el PIN de pago.');
-      return;
-    }
-    if (customerPhone.replace(/\D/g, '').length < 8) {
-      setError('Ingresa un telefono valido de al menos 8 digitos.');
+    if (customerPhone.trim() && customerPhone.replace(/\D/g, '').length < 8) {
+      setError('Si escribes telefono, debe tener al menos 8 digitos.');
       return;
     }
     if (paymentMethod === 'sinpe' && !selectedProof) {
@@ -390,7 +386,7 @@ function removeEntry(entryId: string) {
                 value={customerPhone}
                 onChangeText={(value) => { clearFeedback(); setCustomerPhone(value.replace(/\D/g, '')); }}
                 keyboardType="number-pad"
-                placeholder="Telefono del cliente"
+                placeholder="Telefono del cliente (opcional)"
                 placeholderTextColor="#94a3b8"
               />
             </View>
