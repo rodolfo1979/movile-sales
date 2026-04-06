@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -58,6 +58,8 @@ export default function MonazosScreen() {
   const [paymentMethod, setPaymentMethod] = React.useState<'efectivo' | 'sinpe'>('efectivo');
   const [selectedProof, setSelectedProof] = React.useState<ImagePicker.ImagePickerAsset | null>(null);
   const [lastTicket, setLastTicket] = React.useState<TicketReceipt | null>(null);
+  const [gameMenuOpen, setGameMenuOpen] = React.useState(false);
+  const [drawMenuOpen, setDrawMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -314,25 +316,49 @@ export default function MonazosScreen() {
 
         <ThemedView style={styles.surfaceCard}>
           <ThemedText style={styles.sectionTitle}>Juego y sorteo</ThemedText>
-          <View style={styles.chipWrap}>
-            {games.map((game) => (
-              <Pressable key={game.id} onPress={() => chooseGame(game)} style={[styles.selectorChip, selectedGameId === game.id && styles.selectorChipActive]}>
-                <ThemedText style={selectedGameId === game.id ? styles.selectorChipTextActive : styles.selectorChipText}>{game.name}</ThemedText>
+          <ThemedText style={styles.sectionNote}>Selecciona el juego y luego arma todo desde esta misma pantalla.</ThemedText>
+          <View style={styles.dropdownStack}>
+            <View style={styles.dropdownBlock}>
+              <ThemedText style={styles.dropdownLabel}>Juego</ThemedText>
+              <Pressable style={styles.dropdownTrigger} onPress={() => { clearFeedback(); setGameMenuOpen((current) => !current); setDrawMenuOpen(false); }}>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={styles.dropdownValue}>{selectedGame?.name || 'Selecciona juego'}</ThemedText>
+                  <ThemedText style={styles.dropdownHint}>Toca para ver todas las opciones</ThemedText>
+                </View>
+                <ThemedText style={styles.dropdownChevron}>{gameMenuOpen ? '▲' : '▼'}</ThemedText>
               </Pressable>
-            ))}
-          </View>
-
-          {selectedGame ? (
-            <View style={styles.drawList}>
-              {selectedGame.draws.map((draw) => (
-                <Pressable key={draw.id} onPress={() => { clearFeedback(); setSelectedDrawId(draw.id); }} style={[styles.drawRow, selectedDrawId === draw.id && styles.drawRowActive]}>
-                  <ThemedText style={styles.drawTitle}>{draw.name}</ThemedText>
-                  <ThemedText style={styles.drawMeta}>{draw.drawTime}</ThemedText>
-                  <ThemedText style={styles.drawHint}>{getDrawClosingLabel(draw.drawTime, draw.cutoffMinutes)}</ThemedText>
-                </Pressable>
-              ))}
+              {gameMenuOpen ? (
+                <View style={styles.dropdownMenu}>
+                  {games.map((game) => (
+                    <Pressable key={game.id} onPress={() => chooseGame(game)} style={[styles.dropdownOption, selectedGameId === game.id && styles.dropdownOptionActive]}>
+                      <ThemedText style={selectedGameId === game.id ? styles.dropdownOptionTextActive : styles.dropdownOptionText}>{game.name}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
-          ) : null}
+
+            <View style={styles.dropdownBlock}>
+              <ThemedText style={styles.dropdownLabel}>Sorteo</ThemedText>
+              <Pressable style={[styles.dropdownTrigger, !selectedGame && styles.dropdownTriggerDisabled]} onPress={() => { if (!selectedGame) return; clearFeedback(); setDrawMenuOpen((current) => !current); setGameMenuOpen(false); }}>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={styles.dropdownValue}>{selectedDraw ? `${selectedDraw.name} | ${selectedDraw.drawTime}` : 'Selecciona sorteo'}</ThemedText>
+                  <ThemedText style={styles.dropdownHint}>{selectedDraw ? getDrawClosingLabel(selectedDraw.drawTime, selectedDraw.cutoffMinutes) : 'Escoge el juego primero'}</ThemedText>
+                </View>
+                <ThemedText style={styles.dropdownChevron}>{drawMenuOpen ? '▲' : '▼'}</ThemedText>
+              </Pressable>
+              {selectedGame && drawMenuOpen ? (
+                <View style={styles.dropdownMenu}>
+                  {selectedGame.draws.map((draw) => (
+                    <Pressable key={draw.id} onPress={() => { clearFeedback(); setSelectedDrawId(draw.id); setDrawMenuOpen(false); }} style={[styles.dropdownOption, selectedDrawId === draw.id && styles.dropdownOptionActive]}>
+                      <ThemedText style={selectedDrawId === draw.id ? styles.dropdownOptionTextActive : styles.dropdownOptionText}>{draw.name} | {draw.drawTime}</ThemedText>
+                      <ThemedText style={styles.dropdownOptionMeta}>{getDrawClosingLabel(draw.drawTime, draw.cutoffMinutes)}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </View>
         </ThemedView>
 
         {selectedGame && selectedDraw ? (
@@ -448,7 +474,7 @@ export default function MonazosScreen() {
             ) : null}
 
             <Pressable style={[styles.confirmButton, saving && styles.confirmButtonDisabled]} onPress={() => void handleSell()} disabled={saving}>
-              {saving ? <ActivityIndicator color="#ffffff" /> : <ThemedText style={styles.confirmButtonText}>Confirmar venta</ThemedText>}
+              {saving ? <ActivityIndicator color="#ffffff" /> : <ThemedText style={styles.confirmButtonText}>Generar ticket</ThemedText>}
             </Pressable>
           </ThemedView>
         ) : null}
@@ -494,17 +520,21 @@ const styles = StyleSheet.create({
   surfaceCard: { borderRadius: 26, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
   sectionTitle: { color: '#17212b', fontSize: 22, lineHeight: 26, fontWeight: '800' },
   sectionSubheading: { color: '#17212b', fontSize: 18, lineHeight: 22, fontWeight: '800' },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  selectorChip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f3efe4' },
-  selectorChipActive: { backgroundColor: '#6d28d9' },
-  selectorChipText: { color: '#59616d' },
-  selectorChipTextActive: { color: '#ffffff' },
-  drawList: { gap: 10 },
-  drawRow: { borderRadius: 18, padding: 14, gap: 4, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
-  drawRowActive: { backgroundColor: '#f6f0ff', borderColor: '#d8b4fe' },
-  drawTitle: { color: '#17212b', fontSize: 17, lineHeight: 21, fontWeight: '800' },
-  drawMeta: { color: '#475569' },
-  drawHint: { color: '#6d28d9' },
+  sectionNote: { color: '#7c8795', fontSize: 12, lineHeight: 16 },
+  dropdownStack: { gap: 12 },
+  dropdownBlock: { gap: 8 },
+  dropdownLabel: { color: '#7b8794', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, paddingHorizontal: 15, paddingVertical: 14, backgroundColor: '#f8fbff', borderWidth: 1, borderColor: '#d9e5f2' },
+  dropdownTriggerDisabled: { opacity: 0.6 },
+  dropdownValue: { color: '#17212b', fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  dropdownHint: { color: '#64748b', fontSize: 12, lineHeight: 16 },
+  dropdownChevron: { color: '#6d28d9', fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  dropdownMenu: { borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d9e5f2', overflow: 'hidden' },
+  dropdownOption: { paddingHorizontal: 15, paddingVertical: 13, borderTopWidth: 1, borderTopColor: '#edf2f7', gap: 3 },
+  dropdownOptionActive: { backgroundColor: '#f6f0ff' },
+  dropdownOptionText: { color: '#17212b', fontSize: 15, lineHeight: 19, fontWeight: '700' },
+  dropdownOptionTextActive: { color: '#6d28d9', fontSize: 15, lineHeight: 19, fontWeight: '800' },
+  dropdownOptionMeta: { color: '#64748b', fontSize: 12, lineHeight: 16 },
   cashierCard: { borderRadius: 28, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
   brandBar: { borderRadius: 22, padding: 16, gap: 4, backgroundColor: '#6d28d9' },
   brandBarText: { color: '#ffffff', fontSize: 24, lineHeight: 28, fontWeight: '800' },
@@ -564,4 +594,6 @@ const styles = StyleSheet.create({
   ticketActionSecondary: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#ede9fe' },
   ticketActionSecondaryText: { color: '#6d28d9', fontWeight: '800' },
 });
+
+
 

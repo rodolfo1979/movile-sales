@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -55,6 +55,9 @@ export default function LoteriaScreen() {
   const [paymentMethod, setPaymentMethod] = React.useState<'efectivo' | 'sinpe'>('efectivo');
   const [selectedProof, setSelectedProof] = React.useState<ImagePicker.ImagePickerAsset | null>(null);
   const [lastTicket, setLastTicket] = React.useState<TicketReceipt | null>(null);
+  const [lotteryMenuOpen, setLotteryMenuOpen] = React.useState(false);
+  const [drawMenuOpen, setDrawMenuOpen] = React.useState(false);
+  const [activePadTarget, setActivePadTarget] = React.useState<'number' | 'amount' | 'reventado'>('number');
 
   React.useEffect(() => {
     let cancelled = false;
@@ -181,24 +184,41 @@ export default function LoteriaScreen() {
   }
 
   function pressKey(key: string) {
-    if (key === '<') {
-      clearFeedback();
-      setNumberValue((current) => current.slice(0, -1));
-      return;
-    }
     if (key === '+') {
       void addEntry();
       return;
     }
     clearFeedback();
-    setNumberValue((current) => {
-      const nextValue = (current + key).replace(/\D/g, '').slice(0, 2);
-      if (multiPlayEnabled && nextValue.length === 2) {
-        void commitEntry(nextValue, { keepAmounts: true });
-        return '';
+    if (activePadTarget === 'number') {
+      if (key === '<') {
+        setNumberValue((current) => current.slice(0, -1));
+        return;
       }
-      return nextValue;
-    });
+      setNumberValue((current) => {
+        const nextValue = (current + key).replace(/\D/g, '').slice(0, 2);
+        if (multiPlayEnabled && nextValue.length === 2) {
+          void commitEntry(nextValue, { keepAmounts: true });
+          return '';
+        }
+        return nextValue;
+      });
+      return;
+    }
+
+    if (activePadTarget === 'amount') {
+      if (key === '<') {
+        setAmount((current) => current.slice(0, -1));
+        return;
+      }
+      setAmount((current) => (current + key).replace(/\D/g, '').slice(0, 6));
+      return;
+    }
+
+    if (key === '<') {
+      setReventadoAmount((current) => current.slice(0, -1));
+      return;
+    }
+    setReventadoAmount((current) => (current + key).replace(/\D/g, '').slice(0, 6));
   }
 
 function removeEntry(entryId: string) {
@@ -345,25 +365,72 @@ function removeEntry(entryId: string) {
 
         <ThemedView style={styles.surfaceCard}>
           <ThemedText style={styles.sectionTitle}>Loteria y sorteo</ThemedText>
-          <View style={styles.chipWrap}>
-            {lotteries.map((lottery) => (
-              <Pressable key={lottery.id} onPress={() => chooseLottery(lottery)} style={[styles.selectorChip, selectedLotteryId === lottery.id && styles.selectorChipActive]}>
-                <ThemedText type="small" style={selectedLotteryId === lottery.id ? styles.selectorChipTextActive : styles.selectorChipText}>{lottery.name}</ThemedText>
+          <ThemedText style={styles.sectionNote}>Selecciona el juego y luego captura todo desde esta misma pantalla.</ThemedText>
+          <View style={styles.dropdownStack}>
+            <View style={styles.dropdownBlock}>
+              <ThemedText style={styles.dropdownLabel}>Loteria</ThemedText>
+              <Pressable
+                style={styles.dropdownTrigger}
+                onPress={() => {
+                  clearFeedback();
+                  setLotteryMenuOpen((current) => !current);
+                  setDrawMenuOpen(false);
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={styles.dropdownValue}>{selectedLottery?.name || 'Selecciona loteria'}</ThemedText>
+                  <ThemedText style={styles.dropdownHint}>Toca para ver todos los juegos disponibles</ThemedText>
+                </View>
+                <ThemedText style={styles.dropdownChevron}>{lotteryMenuOpen ? '▲' : '▼'}</ThemedText>
               </Pressable>
-            ))}
-          </View>
-
-          {selectedLottery ? (
-            <View style={styles.drawList}>
-              {selectedLottery.draws.map((draw) => (
-                <Pressable key={draw.id} onPress={() => { clearFeedback(); setSelectedDrawId(draw.id); }} style={[styles.drawRow, selectedDrawId === draw.id && styles.drawRowActive]}>
-                  <ThemedText style={styles.drawTitle}>{draw.name}</ThemedText>
-                  <ThemedText style={styles.drawMeta}>{draw.drawTime}</ThemedText>
-                  <ThemedText style={styles.drawHint}>{getDrawClosingLabel(draw.drawTime, draw.cutoffMinutes)}</ThemedText>
-                </Pressable>
-              ))}
+              {lotteryMenuOpen ? (
+                <View style={styles.dropdownMenu}>
+                  {lotteries.map((lottery) => (
+                    <Pressable key={lottery.id} onPress={() => chooseLottery(lottery)} style={[styles.dropdownOption, selectedLotteryId === lottery.id && styles.dropdownOptionActive]}>
+                      <ThemedText style={selectedLotteryId === lottery.id ? styles.dropdownOptionTextActive : styles.dropdownOptionText}>{lottery.name}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
-          ) : null}
+
+            <View style={styles.dropdownBlock}>
+              <ThemedText style={styles.dropdownLabel}>Sorteo</ThemedText>
+              <Pressable
+                style={[styles.dropdownTrigger, !selectedLottery && styles.dropdownTriggerDisabled]}
+                onPress={() => {
+                  if (!selectedLottery) return;
+                  clearFeedback();
+                  setDrawMenuOpen((current) => !current);
+                  setLotteryMenuOpen(false);
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={styles.dropdownValue}>{selectedDraw ? `${selectedDraw.name} | ${selectedDraw.drawTime}` : 'Selecciona sorteo'}</ThemedText>
+                  <ThemedText style={styles.dropdownHint}>{selectedDraw ? getDrawClosingLabel(selectedDraw.drawTime, selectedDraw.cutoffMinutes) : 'Escoge la loteria primero'}</ThemedText>
+                </View>
+                <ThemedText style={styles.dropdownChevron}>{drawMenuOpen ? '▲' : '▼'}</ThemedText>
+              </Pressable>
+              {selectedLottery && drawMenuOpen ? (
+                <View style={styles.dropdownMenu}>
+                  {selectedLottery.draws.map((draw) => (
+                    <Pressable
+                      key={draw.id}
+                      onPress={() => {
+                        clearFeedback();
+                        setSelectedDrawId(draw.id);
+                        setDrawMenuOpen(false);
+                      }}
+                      style={[styles.dropdownOption, selectedDrawId === draw.id && styles.dropdownOptionActive]}
+                    >
+                      <ThemedText style={selectedDrawId === draw.id ? styles.dropdownOptionTextActive : styles.dropdownOptionText}>{draw.name} | {draw.drawTime}</ThemedText>
+                      <ThemedText style={styles.dropdownOptionMeta}>{getDrawClosingLabel(draw.drawTime, draw.cutoffMinutes)}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </View>
         </ThemedView>
 
         {selectedLottery && selectedDraw ? (
@@ -394,34 +461,47 @@ function removeEntry(entryId: string) {
             <View style={styles.topFieldRow}>
               <View style={[styles.fieldBlock, styles.fieldGrow]}>
                 <ThemedText style={styles.fieldLabel}>Monto CRC</ThemedText>
-                <TextInput
-                  style={styles.largeInput}
-                  value={amount}
-                  onChangeText={(value) => { clearFeedback(); setAmount(value.replace(/\D/g, '')); }}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor="#94a3b8"
-                />
+                <Pressable
+                  style={[styles.largeInput, styles.touchField, activePadTarget === 'amount' && styles.touchFieldActive]}
+                  onPress={() => {
+                    clearFeedback();
+                    setActivePadTarget('amount');
+                  }}
+                >
+                  <ThemedText style={styles.touchFieldValue}>{amount || '0'}</ThemedText>
+                  <ThemedText style={styles.touchFieldHint}>Toca y usa el teclado inferior</ThemedText>
+                </Pressable>
               </View>
 
               {selectedLottery.reventadoEnabled ? (
                 <View style={[styles.fieldBlock, styles.reventadoField]}>
                   <ThemedText style={styles.fieldLabel}>Reventado</ThemedText>
-                  <TextInput
-                    style={styles.mediumInput}
-                    value={reventadoAmount}
-                    onChangeText={(value) => { clearFeedback(); setReventadoAmount(value.replace(/\D/g, '')); }}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor="#94a3b8"
-                  />
+                  <Pressable
+                    style={[styles.mediumInput, styles.touchField, activePadTarget === 'reventado' && styles.touchFieldActive]}
+                    onPress={() => {
+                      clearFeedback();
+                      setActivePadTarget('reventado');
+                    }}
+                  >
+                    <ThemedText style={styles.touchFieldValueMedium}>{reventadoAmount || '0'}</ThemedText>
+                    <ThemedText style={styles.touchFieldHint}>Teclado</ThemedText>
+                  </Pressable>
                 </View>
               ) : null}
             </View>
 
             <View style={styles.fieldBlock}>
               <ThemedText style={styles.fieldLabel}>Numero</ThemedText>
-              <TextInput style={styles.largeInput} value={normalizedNumber} editable={false} placeholder="00" placeholderTextColor="#cbd5e1" />
+              <Pressable
+                style={[styles.largeInput, styles.touchField, activePadTarget === 'number' && styles.touchFieldActive]}
+                onPress={() => {
+                  clearFeedback();
+                  setActivePadTarget('number');
+                }}
+              >
+                <ThemedText style={styles.touchFieldValue}>{normalizedNumber || '--'}</ThemedText>
+                <ThemedText style={styles.touchFieldHint}>Toca y usa el teclado inferior</ThemedText>
+              </Pressable>
             </View>
 
             <Pressable
@@ -447,7 +527,7 @@ function removeEntry(entryId: string) {
 
             <View style={styles.quickAmountRow}>
               {quickAmounts.map((item) => (
-                <Pressable key={item} style={[styles.quickAmountChip, amount === String(item) && styles.quickAmountChipActive]} onPress={() => { clearFeedback(); setAmount(String(item)); }}>
+                <Pressable key={item} style={[styles.quickAmountChip, amount === String(item) && styles.quickAmountChipActive]} onPress={() => { clearFeedback(); setActivePadTarget('amount'); setAmount(String(item)); }}>
                   <ThemedText type="small" style={amount === String(item) ? styles.quickAmountChipTextActive : styles.quickAmountChipText}>
                     {item >= 1000 ? `CRC ${item / 1000}k` : `CRC ${item}`}
                   </ThemedText>
@@ -455,34 +535,57 @@ function removeEntry(entryId: string) {
               ))}
             </View>
 
-            <View style={styles.keypadGrid}>
-              {keypad.map((key) => (
-                <Pressable key={key} onPress={() => pressKey(key)} style={[styles.keypadButton, key === '+' && styles.keypadButtonAccent, key === '<' && styles.keypadButtonNeutral]}>
-                  <ThemedText style={key === '+' ? styles.keypadTextAccent : styles.keypadText}>{key === '<' ? 'DEL' : key}</ThemedText>
+            <View style={styles.padTargetRow}>
+              <Pressable style={[styles.padTargetChip, activePadTarget === 'number' && styles.padTargetChipActive]} onPress={() => { clearFeedback(); setActivePadTarget('number'); }}>
+                <ThemedText style={activePadTarget === 'number' ? styles.padTargetChipTextActive : styles.padTargetChipText}>Numero</ThemedText>
+              </Pressable>
+              <Pressable style={[styles.padTargetChip, activePadTarget === 'amount' && styles.padTargetChipActive]} onPress={() => { clearFeedback(); setActivePadTarget('amount'); }}>
+                <ThemedText style={activePadTarget === 'amount' ? styles.padTargetChipTextActive : styles.padTargetChipText}>Monto</ThemedText>
+              </Pressable>
+              {selectedLottery.reventadoEnabled ? (
+                <Pressable style={[styles.padTargetChip, activePadTarget === 'reventado' && styles.padTargetChipActive]} onPress={() => { clearFeedback(); setActivePadTarget('reventado'); }}>
+                  <ThemedText style={activePadTarget === 'reventado' ? styles.padTargetChipTextActive : styles.padTargetChipText}>Reventado</ThemedText>
                 </Pressable>
-              ))}
+              ) : null}
+            </View>
+
+            <View style={styles.keypadShell}>
+              <View style={styles.keypadHeader}>
+                <ThemedText style={styles.keypadTitle}>Teclado rapido</ThemedText>
+                <ThemedText style={styles.keypadCaption}>Editando {activePadTarget === 'number' ? 'numero' : activePadTarget === 'amount' ? 'monto' : 'reventado'}</ThemedText>
+              </View>
+              <View style={styles.keypadGrid}>
+                {keypad.map((key) => (
+                  <Pressable key={key} onPress={() => pressKey(key)} style={[styles.keypadButton, key === '+' && styles.keypadButtonAccent, key === '<' && styles.keypadButtonNeutral]}>
+                    <ThemedText style={key === '+' ? styles.keypadTextAccent : styles.keypadText}>{key === '<' ? 'DEL' : key}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View style={styles.summaryRow}>
               <ThemedText style={styles.totalText}>Total CRC {totalAmount}</ThemedText>
-              <ThemedText style={styles.summaryHint}>{entries.length} jugada(s)</ThemedText>
+              <ThemedText style={styles.summaryHint}>{entries.length} jugada(s) | Editando: {activePadTarget === 'number' ? 'numero' : activePadTarget === 'amount' ? 'monto' : 'reventado'}</ThemedText>
             </View>
 
             <View style={styles.entryList}>
               {entries.length ? entries.map((entry) => (
-                <View key={entry.id} style={styles.entryRow}>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={styles.entryNumber}>#{entry.numberValue}</ThemedText>
-                    <ThemedText style={styles.entryMeta}>
-                      CRC {entry.amount}{entry.reventadoAmount > 0 ? `  |  Rev. CRC ${entry.reventadoAmount}` : ''}
-                    </ThemedText>
+                <View key={entry.id} style={styles.entryCard}>
+                  <View style={styles.entryCodeWrap}>
+                    <ThemedText style={styles.entryCode}>{entry.numberValue}</ThemedText>
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <ThemedText style={styles.entryPrimary}>Normal CRC {entry.amount}</ThemedText>
+                    <ThemedText style={styles.entrySecondary}>{entry.reventadoAmount > 0 ? `Reventado CRC ${entry.reventadoAmount}` : 'Sin reventado'}</ThemedText>
                   </View>
                   <Pressable onPress={() => removeEntry(entry.id)} style={styles.removeButton}>
                     <ThemedText style={styles.removeButtonText}>X</ThemedText>
                   </Pressable>
                 </View>
               )) : (
-                <ThemedText style={styles.emptyListText}>Agrega jugadas con el teclado y toca + para sumarlas.</ThemedText>
+                <View style={styles.emptyEntryCard}>
+                  <ThemedText style={styles.emptyEntryText}>Agrega jugadas con el teclado y toca + para sumarlas.</ThemedText>
+                </View>
               )}
             </View>
 
@@ -523,7 +626,7 @@ function removeEntry(entryId: string) {
             ) : null}
 
             <Pressable style={[styles.confirmButton, saving && styles.confirmButtonDisabled]} onPress={() => void handleSell()} disabled={saving}>
-              {saving ? <ActivityIndicator color="#ffffff" /> : <ThemedText style={styles.confirmButtonText}>Confirmar venta</ThemedText>}
+              {saving ? <ActivityIndicator color="#ffffff" /> : <ThemedText style={styles.confirmButtonText}>Generar ticket</ThemedText>}
             </Pressable>
           </ThemedView>
         ) : null}
@@ -579,21 +682,20 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#17212b', fontSize: 22, lineHeight: 26, fontWeight: '800' },
   sectionSubheading: { color: '#17212b', fontSize: 18, lineHeight: 22, fontWeight: '800' },
   sectionNote: { color: '#7c8795', fontSize: 12, lineHeight: 16 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  selectorChip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f3efe4' },
-  selectorChipActive: { backgroundColor: '#0f6b3c' },
-  selectorChipText: { color: '#59616d' },
-  selectorChipTextActive: { color: '#ffffff' },
-  drawGrid: { gap: 10 },
-  drawList: { gap: 10 },
-  drawCard: { borderRadius: 18, padding: 14, gap: 4, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
-  drawCardActive: { backgroundColor: '#eefcf3', borderColor: '#b7e4c7' },
-  drawRow: { borderRadius: 18, padding: 14, gap: 4, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
-  drawRowActive: { backgroundColor: '#eefcf3', borderColor: '#b7e4c7' },
-  drawTitle: { color: '#17212b', fontSize: 17, lineHeight: 21, fontWeight: '800' },
-  drawTime: { color: '#475569' },
-  drawMeta: { color: '#475569' },
-  drawHint: { color: '#0f6b3c' },
+  dropdownStack: { gap: 12 },
+  dropdownBlock: { gap: 8 },
+  dropdownLabel: { color: '#7b8794', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, paddingHorizontal: 15, paddingVertical: 14, backgroundColor: '#f8fbff', borderWidth: 1, borderColor: '#d9e5f2' },
+  dropdownTriggerDisabled: { opacity: 0.6 },
+  dropdownValue: { color: '#17212b', fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  dropdownHint: { color: '#64748b', fontSize: 12, lineHeight: 16 },
+  dropdownChevron: { color: '#0f6b3c', fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  dropdownMenu: { borderRadius: 18, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d9e5f2', overflow: 'hidden' },
+  dropdownOption: { paddingHorizontal: 15, paddingVertical: 13, borderTopWidth: 1, borderTopColor: '#edf2f7', gap: 3 },
+  dropdownOptionActive: { backgroundColor: '#eefcf3' },
+  dropdownOptionText: { color: '#17212b', fontSize: 15, lineHeight: 19, fontWeight: '700' },
+  dropdownOptionTextActive: { color: '#0f6b3c', fontSize: 15, lineHeight: 19, fontWeight: '800' },
+  dropdownOptionMeta: { color: '#64748b', fontSize: 12, lineHeight: 16 },
   salesCard: { borderRadius: 28, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
   cashierCard: { borderRadius: 28, padding: 16, gap: 14, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e7edf4' },
   salesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
@@ -620,6 +722,11 @@ const styles = StyleSheet.create({
   reventadoField: { width: 132 },
   fieldLabel: { color: '#7b8794' },
   largeInput: { minHeight: 60, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 26, fontWeight: '800' },
+  touchField: { justifyContent: 'center', gap: 2 },
+  touchFieldActive: { borderColor: '#0f6b3c', backgroundColor: '#eefcf3' },
+  touchFieldValue: { color: '#17212b', fontSize: 26, lineHeight: 30, fontWeight: '800' },
+  touchFieldValueMedium: { color: '#17212b', fontSize: 20, lineHeight: 24, fontWeight: '800' },
+  touchFieldHint: { color: '#64748b', fontSize: 11, lineHeight: 14 },
   mediumInput: { minHeight: 56, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 20, fontWeight: '800' },
   amountInput: { minHeight: 60, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 26, fontWeight: '800' },
   compactAmountInput: { minHeight: 56, borderRadius: 18, paddingHorizontal: 16, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#d7dce3', color: '#17212b', fontSize: 20, fontWeight: '800' },
@@ -641,11 +748,19 @@ const styles = StyleSheet.create({
   multiPlayTitle: { color: '#17212b', fontSize: 16, lineHeight: 20, fontWeight: '800' },
   multiPlayHint: { color: '#64748b', lineHeight: 18 },
   quickAmountRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  padTargetRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  padTargetChip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f3efe4' },
+  padTargetChipActive: { backgroundColor: '#17212b' },
+  padTargetChipText: { color: '#4b5563', fontWeight: '700' },
+  padTargetChipTextActive: { color: '#ffffff', fontWeight: '800' },
   quickAmountChip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff1f2' },
   quickAmountChipActive: { backgroundColor: '#dc2626' },
   quickAmountChipText: { color: '#b91c1c' },
   quickAmountChipTextActive: { color: '#ffffff' },
-  keypadShell: { borderRadius: 22, padding: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
+  keypadShell: { borderRadius: 22, padding: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', gap: 12 },
+  keypadHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  keypadTitle: { color: '#17212b', fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  keypadCaption: { color: '#64748b', fontSize: 12, lineHeight: 16 },
   keypadGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
   keypadButton: { width: '31%', minWidth: 86, borderRadius: 18, paddingVertical: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f3f7' },
   keypadButtonAccent: { backgroundColor: '#fee2e2' },
@@ -698,4 +813,11 @@ const styles = StyleSheet.create({
   ticketActionSecondary: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#dbeafe' },
   ticketActionSecondaryText: { color: '#1d4ed8' },
 });
+
+
+
+
+
+
+
 

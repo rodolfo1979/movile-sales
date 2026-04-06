@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -342,7 +342,7 @@ export default function HomeScreen() {
                 <View style={styles.sessionAvatar}><ThemedText type="small" style={styles.sessionAvatarText}>VD</ThemedText></View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <ThemedText style={styles.sessionPrimary}>{authUser.email}</ThemedText>
-                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} � Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
+                  <ThemedText type="small" style={styles.sessionSecondary}>Rol {authUser.role} ï¿½ Tenant {authUser.tenant?.slug || tenantSlug}</ThemedText>
                 </View>
               </View>
               <Pressable style={styles.ghostButton} onPress={() => void handleLogout()}>
@@ -380,6 +380,14 @@ export default function HomeScreen() {
               <ThemedText type="small" style={styles.balanceHeroLabel}>Disponible para operar</ThemedText>
               <ThemedText style={styles.balanceHeroValue}>{formatCurrency(todaySellerBalance.operationalBalance)}</ThemedText>
               <ThemedText type="small" style={styles.balanceHeroHint}>No incluye comisiones. Refleja caja real para ventas y pago de premios.</ThemedText>
+              <View style={styles.balanceHeroMetaRow}>
+                <View style={styles.balanceMiniPill}>
+                  <ThemedText type="small" style={styles.balanceMiniPillText}>Ventas {formatMetricCurrency(todaySellerBalance.totalCashSales)}</ThemedText>
+                </View>
+                <View style={styles.balanceMiniPill}>
+                  <ThemedText type="small" style={styles.balanceMiniPillText}>Premios {formatMetricCurrency(todaySellerBalance.totalPrizePayments)}</ThemedText>
+                </View>
+              </View>
             </View>
 
             <View style={styles.metricGrid}>
@@ -733,6 +741,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  balanceHeroMetaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 6 },
+  balanceMiniPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#fff7e2' },
+  balanceMiniPillText: { color: '#8a4b10', fontWeight: '700' },
   metricGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -786,6 +797,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   quickCard: {
+    minHeight: 108,
     width: '48%',
     minWidth: 148,
     borderRadius: 22,
@@ -798,6 +810,7 @@ const styles = StyleSheet.create({
   quickCardDisabled: {
     opacity: 0.55,
   },
+  quickTextBlock: { flex: 1, gap: 3 },
   quickBadge: {
     alignSelf: 'flex-start',
     borderRadius: 999,
@@ -897,6 +910,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+
 
 
 

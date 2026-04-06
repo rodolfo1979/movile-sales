@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -265,6 +265,12 @@ const styles = StyleSheet.create({
   detailLabel: { color: '#7b8794', fontSize: 12, lineHeight: 16, fontWeight: '700' },
   detailValue: { color: '#17212b', lineHeight: 20, fontWeight: '700' },
   prizeBanner: { borderRadius: 18, padding: 14, gap: 4, backgroundColor: '#faf8f2', borderWidth: 1, borderColor: '#ece7db' },
+  entryList: { gap: 8 },
+  entryCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 12, backgroundColor: '#fbfdff', borderWidth: 1, borderColor: '#e5edf6' },
+  entryCodeWrap: { minWidth: 64, minHeight: 56, paddingHorizontal: 8, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' },
+  entryCode: { color: '#1d4ed8', fontSize: 18, lineHeight: 22, fontWeight: '800' },
+  entryPrimary: { color: '#17212b', fontWeight: '800' },
+  entrySecondary: { color: '#64748b' },
   prizeBannerLabel: { color: '#7c8795', fontSize: 12, lineHeight: 16, fontWeight: '700' },
   prizeBannerValue: { color: '#17212b', fontSize: 18, lineHeight: 22, fontWeight: '800' },
   ticketActions: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 2 },
@@ -282,3 +288,4 @@ const styles = StyleSheet.create({
   cancelledTitle: { color: '#9f1239', fontSize: 20, lineHeight: 24, fontWeight: '800' },
   cancelledText: { color: '#881337' },
 });
+
