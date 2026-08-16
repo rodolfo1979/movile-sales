@@ -258,11 +258,6 @@ function removeEntry(entryId: string) {
       setError('Si escribes telefono, debe tener al menos 8 digitos.');
       return;
     }
-    if (paymentMethod === 'sinpe' && !selectedProof) {
-      setError('Sube la foto del comprobante para continuar.');
-      return;
-    }
-
     try {
       setSaving(true);
       setSuccess('');
@@ -601,8 +596,8 @@ function removeEntry(entryId: string) {
               <ThemedView style={styles.proofCard}>
                 <View style={styles.proofHeader}>
                   <View style={{ flex: 1 }}>
-                    <ThemedText style={styles.sectionSubheading}>Comprobante</ThemedText>
-                    <ThemedText style={styles.subtle}>Se adjunta al confirmar.</ThemedText>
+                    <ThemedText style={styles.sectionSubheading}>Comprobante opcional</ThemedText>
+                    <ThemedText style={styles.subtle}>Puedes vender sin adjuntar foto.</ThemedText>
                   </View>
                   <Pressable style={styles.proofButton} onPress={() => void pickProof()}>
                     <ThemedText type="small" style={styles.proofButtonText}>{selectedProof ? 'Cambiar' : 'Subir'}</ThemedText>
