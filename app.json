@@ -38,6 +38,12 @@
       ],
       "expo-sharing"
     ],
-    "newArchEnabled": false
+    "newArchEnabled": false,
+    "extra": {
+      "eas": {
+        "projectId": "4c4d0ec6-9c93-419c-b150-3b0939433cf0"
+      }
+    },
+    "owner": "rodolfo79"
   }
 }
